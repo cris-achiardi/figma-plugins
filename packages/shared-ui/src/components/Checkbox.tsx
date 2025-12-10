@@ -16,39 +16,39 @@ export const Checkbox: React.FC<CheckboxProps> = ({
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing.sm,
-    cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.4 : 1,
   };
 
-  const checkboxWrapperStyle: CSSProperties = {
+  const checkboxContainerStyle: CSSProperties = {
     position: 'relative',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     width: '16px',
     height: '16px',
     flexShrink: 0,
   };
 
-  const checkboxStyle: CSSProperties = {
+  const checkboxInputStyle: CSSProperties = {
     position: 'absolute',
     opacity: 0,
-    width: '16px',
-    height: '16px',
-    cursor: disabled ? 'not-allowed' : 'pointer',
+    width: '100%',
+    height: '100%',
     margin: 0,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    zIndex: 1,
   };
 
-  const customCheckboxStyle: CSSProperties = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+  const checkboxVisualStyle: CSSProperties = {
     width: '16px',
     height: '16px',
     backgroundColor: checked ? theme.colors.blue : theme.colors.bgPrimary,
     border: `1px solid ${checked ? theme.colors.blue : theme.colors.border}`,
     borderRadius: theme.borderRadius.sm,
+    transition: `all ${theme.transitions.fast}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    transition: `all ${theme.transitions.fast}`,
     pointerEvents: 'none',
   };
 
@@ -64,19 +64,20 @@ export const Checkbox: React.FC<CheckboxProps> = ({
     color: theme.colors.textPrimary,
     fontFamily: theme.typography.fontFamily.default,
     userSelect: 'none',
+    cursor: 'default',
   };
 
   return (
-    <label style={containerStyle}>
-      <div style={checkboxWrapperStyle}>
+    <div style={containerStyle}>
+      <div style={checkboxContainerStyle}>
         <input
           {...inputProps}
           type="checkbox"
           checked={checked}
           disabled={disabled}
-          style={{ ...checkboxStyle, ...style }}
+          style={{ ...checkboxInputStyle, ...style }}
         />
-        <div style={customCheckboxStyle}>
+        <div style={checkboxVisualStyle}>
           <svg
             style={checkmarkStyle}
             viewBox="0 0 10 8"
@@ -94,6 +95,6 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         </div>
       </div>
       {label && <span style={labelStyle}>{label}</span>}
-    </label>
+    </div>
   );
 };

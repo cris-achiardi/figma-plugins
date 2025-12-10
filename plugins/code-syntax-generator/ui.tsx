@@ -162,30 +162,40 @@ function App() {
           Platforms & Naming Conventions
         </legend>
         <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.md }}>
-          {(Object.keys(platforms) as Platform[]).map(platform => (
-            <div key={platform} style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: theme.spacing.sm,
-            }}>
-              <Checkbox
-                checked={platforms[platform]}
-                onChange={() => handlePlatformToggle(platform)}
-                label={platform}
-              />
-              {platforms[platform] && (
-                <Select
-                  value={conventions[platform]}
-                  onChange={e => handleConventionChange(
-                    platform,
-                    e.target.value as NamingConvention
-                  )}
-                  options={namingConventionOptions}
-                  style={{ marginLeft: 'auto', minWidth: '140px' }}
+          {(Object.keys(platforms) as Platform[]).map(platform => {
+            const platformLabels: Record<Platform, string> = {
+              WEB: 'Web',
+              iOS: 'iOS',
+              ANDROID: 'Android',
+            };
+
+            return (
+              <div key={platform} style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                alignItems: 'center',
+                gap: theme.spacing.md,
+                minHeight: '30px',
+              }}>
+                <Checkbox
+                  checked={platforms[platform]}
+                  onChange={() => handlePlatformToggle(platform)}
+                  label={platformLabels[platform]}
                 />
-              )}
-            </div>
-          ))}
+                {platforms[platform] && (
+                  <Select
+                    value={conventions[platform]}
+                    onChange={e => handleConventionChange(
+                      platform,
+                      e.target.value as NamingConvention
+                    )}
+                    options={namingConventionOptions}
+                    style={{ minWidth: '140px' }}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       </fieldset>
 
