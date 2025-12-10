@@ -95,7 +95,10 @@ function formatPath(
     case 'camelCase':
       // background/primary/default → backgroundPrimaryDefault
       formatted = parts
-        .map((p, i) => i === 0 ? p.toLowerCase() : capitalize(p))
+        .map((p, i) => {
+          const lower = p.toLowerCase();
+          return i === 0 ? lower : lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
         .join('');
       break;
 
@@ -121,26 +124,30 @@ function formatPath(
       // Normalize prefix to match convention
       switch (convention) {
         case 'camelCase':
-          const camelPrefix = prefix
-            .replace(/[-_]/g, '')
-            .replace(/^./, c => c.toLowerCase());
+          // Split on separators and spaces, then convert to camelCase
+          const camelParts = prefix.split(/[-_\s]+/).filter(p => p.length > 0);
+          const camelPrefix = camelParts
+            .map((p, i) => i === 0 ? p.toLowerCase() : capitalize(p))
+            .join('');
           formatted = camelPrefix + capitalize(formatted);
           break;
 
         case 'snake_case':
-          const snakePrefix = prefix.toLowerCase().replace(/[-]/g, '_');
+          // Replace hyphens and spaces with underscores, convert to lowercase
+          const snakePrefix = prefix.toLowerCase().replace(/[-\s]+/g, '_');
           formatted = `${snakePrefix}_${formatted}`;
           break;
 
         case 'kebab-case':
-          const kebabPrefix = prefix.toLowerCase().replace(/[_]/g, '-');
+          // Replace underscores and spaces with hyphens, convert to lowercase
+          const kebabPrefix = prefix.toLowerCase().replace(/[_\s]+/g, '-');
           formatted = `${kebabPrefix}-${formatted}`;
           break;
 
         case 'PascalCase':
-          const pascalPrefix = prefix
-            .replace(/[-_]/g, '')
-            .replace(/^./, c => c.toUpperCase());
+          // Split on separators and spaces, then convert to PascalCase
+          const pascalParts = prefix.split(/[-_\s]+/).filter(p => p.length > 0);
+          const pascalPrefix = pascalParts.map(capitalize).join('');
           formatted = pascalPrefix + formatted;
           break;
       }
@@ -164,5 +171,5 @@ function formatPath(
  * Capitalize first letter of string
  */
 function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
