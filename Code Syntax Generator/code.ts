@@ -18,7 +18,7 @@ figma.ui.onmessage = async (msg) => {
   }
 
   if (msg.type === 'apply-code-syntax') {
-    const { collectionId, platforms, conventions, prefix } = msg;
+    const { collectionId, platforms, conventions, prefix, normalizePrefix } = msg;
 
     // Get the selected collection
     const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
@@ -37,7 +37,7 @@ figma.ui.onmessage = async (msg) => {
     let updated = 0;
     for (const variable of variables) {
       if (variable) {
-        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefix);
+        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefix, normalizePrefix);
 
         // Set code syntax for each selected platform
         for (const platform of platforms) {
@@ -63,7 +63,8 @@ function buildCodeSyntax(
   variable: Variable,
   platforms: string[],
   conventions: Record<string, string>,
-  prefix: string
+  prefix: string,
+  normalizePrefix: boolean
 ): Record<string, string> {
   // Parse variable path from hierarchical name
   // Figma variables use "/" as separator: "background/primary/default"
@@ -73,7 +74,7 @@ function buildCodeSyntax(
 
   for (const platform of platforms) {
     const convention = conventions[platform];
-    syntax[platform] = formatPath(path, convention, prefix);
+    syntax[platform] = formatPath(path, convention, prefix, normalizePrefix);
   }
 
   return syntax;
@@ -85,7 +86,8 @@ function buildCodeSyntax(
 function formatPath(
   parts: string[],
   convention: string,
-  prefix: string
+  prefix: string,
+  normalizePrefix: boolean
 ): string {
   let formatted = '';
 
@@ -115,15 +117,43 @@ function formatPath(
 
   // Add prefix if provided
   if (prefix) {
-    // For camelCase with prefix, capitalize first letter after prefix
-    if (convention === 'camelCase') {
-      formatted = prefix + capitalize(formatted);
-    } else if (convention === 'PascalCase') {
-      formatted = capitalize(prefix) + formatted;
+    if (normalizePrefix) {
+      // Normalize prefix to match convention
+      switch (convention) {
+        case 'camelCase':
+          const camelPrefix = prefix
+            .replace(/[-_]/g, '')
+            .replace(/^./, c => c.toLowerCase());
+          formatted = camelPrefix + capitalize(formatted);
+          break;
+
+        case 'snake_case':
+          const snakePrefix = prefix.toLowerCase().replace(/[-]/g, '_');
+          formatted = `${snakePrefix}_${formatted}`;
+          break;
+
+        case 'kebab-case':
+          const kebabPrefix = prefix.toLowerCase().replace(/[_]/g, '-');
+          formatted = `${kebabPrefix}-${formatted}`;
+          break;
+
+        case 'PascalCase':
+          const pascalPrefix = prefix
+            .replace(/[-_]/g, '')
+            .replace(/^./, c => c.toUpperCase());
+          formatted = pascalPrefix + formatted;
+          break;
+      }
     } else {
-      // For snake_case and kebab-case, just prepend with separator
-      const separator = convention === 'snake_case' ? '_' : '-';
-      formatted = `${prefix}${separator}${formatted}`;
+      // Use prefix as-is, just add appropriate separator
+      if (convention === 'camelCase') {
+        formatted = prefix + capitalize(formatted);
+      } else if (convention === 'PascalCase') {
+        formatted = prefix + formatted;
+      } else {
+        const separator = convention === 'snake_case' ? '_' : '-';
+        formatted = `${prefix}${separator}${formatted}`;
+      }
     }
   }
 

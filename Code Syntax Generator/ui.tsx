@@ -26,6 +26,7 @@ function App() {
     ANDROID: 'snake_case'
   });
   const [prefix, setPrefix] = React.useState('');
+  const [normalizePrefix, setNormalizePrefix] = React.useState(true);
   const [status, setStatus] = React.useState<{
     type: 'success' | 'processing' | 'error' | null;
     message: string;
@@ -97,7 +98,8 @@ function App() {
         collectionId: selectedCollection,
         platforms: enabledPlatforms,
         conventions,
-        prefix: prefix.trim()
+        prefix: prefix.trim(),
+        normalizePrefix
       }
     }, '*');
 
@@ -166,9 +168,21 @@ function App() {
           type="text"
           value={prefix}
           onChange={e => setPrefix(e.target.value)}
-          placeholder="e.g., ds"
+          placeholder="e.g., ds, test-ds, myPrefix"
         />
       </label>
+
+      {prefix && (
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '12px' }}>
+          <input
+            type="checkbox"
+            checked={normalizePrefix}
+            onChange={e => setNormalizePrefix(e.target.checked)}
+            style={{ width: 'auto', margin: 0 }}
+          />
+          Normalize prefix to match naming convention
+        </label>
+      )}
 
       <button
         onClick={handleApply}

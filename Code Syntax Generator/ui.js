@@ -23618,6 +23618,7 @@
       ANDROID: "snake_case"
     });
     const [prefix, setPrefix] = React.useState("");
+    const [normalizePrefix, setNormalizePrefix] = React.useState(true);
     const [status, setStatus] = React.useState({ type: null, message: "" });
     React.useEffect(() => {
       parent.postMessage({ pluginMessage: { type: "get-collections" } }, "*");
@@ -23668,7 +23669,8 @@
           collectionId: selectedCollection,
           platforms: enabledPlatforms,
           conventions,
-          prefix: prefix.trim()
+          prefix: prefix.trim(),
+          normalizePrefix
         }
       }, "*");
       setStatus({
@@ -23711,9 +23713,17 @@
         type: "text",
         value: prefix,
         onChange: (e) => setPrefix(e.target.value),
-        placeholder: "e.g., ds"
+        placeholder: "e.g., ds, test-ds, myPrefix"
       }
-    )), /* @__PURE__ */ React.createElement(
+    )), prefix && /* @__PURE__ */ React.createElement("label", { style: { display: "flex", alignItems: "center", gap: "8px", marginTop: "8px", marginBottom: "12px" } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        type: "checkbox",
+        checked: normalizePrefix,
+        onChange: (e) => setNormalizePrefix(e.target.checked),
+        style: { width: "auto", margin: 0 }
+      }
+    ), "Normalize prefix to match naming convention"), /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: handleApply,
