@@ -128,8 +128,15 @@ function App() {
       fontFamily: theme.typography.fontFamily.default,
       display: 'flex',
       flexDirection: 'column',
-      gap: theme.spacing.lg,
+      minHeight: '100%',
+      boxSizing: 'border-box',
     }}>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: theme.spacing.lg,
+        flex: 1,
+      }}>
 
       <Dropdown
         label="Variable Collection"
@@ -246,6 +253,7 @@ function App() {
           {status.message}
         </div>
       )}
+      </div>
 
       {/* Footer with version and info icon */}
       <div style={{
@@ -433,6 +441,17 @@ function App() {
     </div>
   );
 }
+
+// Add global styles for full height layout
+const style = document.createElement('style');
+style.textContent = `
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+`;
+document.head.appendChild(style);
 
 console.log('Looking for root element...');
 const container = document.getElementById('root');
