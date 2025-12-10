@@ -1,0 +1,22 @@
+{
+  "name": "code-syntax-generator",
+  "version": "1.0.0",
+  "description": "Programmatically add code syntax to Figma variables in bulk",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc --noEmit false",
+    "watch": "tsc --watch --noEmit false"
+  },
+  "author": "",
+  "license": "",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.97.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

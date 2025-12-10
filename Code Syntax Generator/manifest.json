@@ -1,0 +1,12 @@
+{
+  "name": "Code Syntax Generator",
+  "id": "1580373563022462030",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": []
+  }
+}
