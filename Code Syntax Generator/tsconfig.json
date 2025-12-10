@@ -1,17 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
-    "lib": ["ES2020"],
+    "target": "ES2017",
+    "lib": ["ES2017", "DOM"],
     "jsx": "react",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
   },
-  "include": ["*.ts", "*.tsx"],
-  "exclude": ["node_modules"]
+  "files": ["code.ts", "ui.tsx"]
 }

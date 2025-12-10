@@ -5,7 +5,7 @@ figma.showUI(__html__, { width: 400, height: 500 });
 figma.ui.onmessage = async (msg) => {
   if (msg.type === 'get-collections') {
     // Get all local variable collections
-    const collections = figma.variables.getLocalVariableCollections();
+    const collections = await figma.variables.getLocalVariableCollectionsAsync();
 
     // Send back to UI
     figma.ui.postMessage({
@@ -21,23 +21,30 @@ figma.ui.onmessage = async (msg) => {
     const { collectionId, platforms, conventions, prefix } = msg;
 
     // Get the selected collection
-    const collection = figma.variables.getVariableCollectionById(collectionId);
+    const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
     if (!collection) {
       figma.ui.postMessage({ type: 'error', message: 'Collection not found' });
       return;
     }
 
     // Get all variables in the collection
-    const variables = collection.variableIds.map(id =>
-      figma.variables.getVariableById(id)
-    ).filter(v => v !== null);
+    const variablePromises = collection.variableIds.map(id =>
+      figma.variables.getVariableByIdAsync(id)
+    );
+    const variables = (await Promise.all(variablePromises)).filter(v => v !== null);
 
     // Process each variable
     let updated = 0;
     for (const variable of variables) {
       if (variable) {
         const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefix);
-        variable.codeSyntax = codeSyntax;
+
+        // Set code syntax for each selected platform
+        for (const platform of platforms) {
+          if (codeSyntax[platform]) {
+            variable.setVariableCodeSyntax(platform as 'WEB' | 'ANDROID' | 'iOS', codeSyntax[platform]);
+          }
+        }
         updated++;
       }
     }

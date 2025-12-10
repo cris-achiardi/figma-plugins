@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 
+console.log('UI script executing');
+
 interface Collection {
   id: string;
   name: string;
@@ -10,6 +12,7 @@ type Platform = 'WEB' | 'iOS' | 'ANDROID';
 type NamingConvention = 'camelCase' | 'snake_case' | 'kebab-case' | 'PascalCase';
 
 function App() {
+  console.log('App component rendering');
   const [collections, setCollections] = React.useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = React.useState('');
   const [platforms, setPlatforms] = React.useState<Record<Platform, boolean>>({
@@ -183,8 +186,15 @@ function App() {
   );
 }
 
+console.log('Looking for root element...');
 const container = document.getElementById('root');
+console.log('Root element:', container);
+
 if (container) {
+  console.log('Creating React root...');
   const root = createRoot(container);
+  console.log('Rendering App...');
   root.render(<App />);
+} else {
+  console.error('Root element not found!');
 }
