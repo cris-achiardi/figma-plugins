@@ -9,7 +9,7 @@ Figma Plugins/
 ├── packages/
 │   └── shared-ui/          # Shared React component library
 │       ├── src/
-│       │   ├── components/ # Button, Input, Select, Checkbox, etc.
+│       │   ├── components/ # Button, Input, Dropdown, Select, Checkbox, etc.
 │       │   ├── styles/     # Design tokens and theme
 │       │   └── index.ts
 │       └── package.json
@@ -30,7 +30,13 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
 ### Components
 - **Button** - Primary, secondary, and tertiary variants
 - **Input** - Text input with label and error states
-- **Select** - Dropdown with custom styling
+- **Select** - Native dropdown with Figma styling (fallback option)
+- **Dropdown** - Custom dropdown with fully styled menu and keyboard navigation
+  - Fully customizable dropdown menu (not limited by browser defaults)
+  - Keyboard navigation support (Enter, Space, Escape, Arrow keys)
+  - Click-outside detection to close menu
+  - Hover states for options
+  - Figma-native styling throughout
 - **Checkbox** - Custom checkbox with label
 
 ### Design Tokens
@@ -43,7 +49,7 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
 ### Usage in Plugins
 
 ```tsx
-import { Button, Input, Select, Checkbox, theme } from '@figma-plugins/shared-ui';
+import { Button, Input, Dropdown, Checkbox, theme } from '@figma-plugins/shared-ui';
 
 function MyPlugin() {
   return (
@@ -55,6 +61,15 @@ function MyPlugin() {
         label="Name"
         value={name}
         onChange={e => setName(e.target.value)}
+      />
+      <Dropdown
+        label="Options"
+        value={selected}
+        onChange={value => setSelected(value)}
+        options={[
+          { value: 'option1', label: 'Option 1' },
+          { value: 'option2', label: 'Option 2' }
+        ]}
       />
     </div>
   );
