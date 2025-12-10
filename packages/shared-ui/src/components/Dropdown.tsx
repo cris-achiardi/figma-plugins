@@ -10,23 +10,42 @@ interface DropdownOptionItemProps {
   option: DropdownOption;
   isSelected: boolean;
   onClick: (value: string) => void;
+  isAnyHovered: boolean;
+  onHoverChange: (isHovered: boolean) => void;
 }
 
-const DropdownOptionItem: React.FC<DropdownOptionItemProps> = ({ option, isSelected, onClick }) => {
+const DropdownOptionItem: React.FC<DropdownOptionItemProps> = ({
+  option,
+  isSelected,
+  onClick,
+  isAnyHovered,
+  onHoverChange
+}) => {
   const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    onHoverChange(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    onHoverChange(false);
+  };
 
   const optionStyle: CSSProperties = {
     padding: '6px 8px',
     fontSize: theme.typography.fontSize.sm,
     fontFamily: theme.typography.fontFamily.default,
     color: theme.colors.textPrimary,
-    backgroundColor: isSelected
-      ? theme.colors.bgSelected
-      : isHovered
-      ? theme.colors.bgHover
+    backgroundColor: isHovered
+      ? theme.colors.bgBrandHover
+      : (isSelected && !isAnyHovered)
+      ? theme.colors.bgBrandHover
       : 'transparent',
     cursor: 'pointer',
     transition: `background-color ${theme.transitions.fast}`,
+    borderRadius: '6px',
   };
 
   return (
@@ -35,8 +54,8 @@ const DropdownOptionItem: React.FC<DropdownOptionItemProps> = ({ option, isSelec
       aria-selected={isSelected}
       style={optionStyle}
       onClick={() => onClick(option.value)}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {option.label}
     </div>
@@ -68,6 +87,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isAnyOptionHovered, setIsAnyOptionHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find(opt => opt.value === value);
@@ -175,14 +195,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
     top: 'calc(100% + 4px)',
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.bgPrimary,
-    border: `1px solid ${theme.colors.border}`,
-    borderRadius: '2px',
+    backgroundColor: '#1E1E1E',
+    border: 'none',
+    borderRadius: '12px',
     boxShadow: theme.shadows.lg,
     maxHeight: '200px',
     overflowY: 'auto',
     zIndex: 1000,
     boxSizing: 'border-box',
+    padding: '8px',
   };
 
   const errorStyle: CSSProperties = {
@@ -232,6 +253,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
               option={option}
               isSelected={option.value === value}
               onClick={handleOptionClick}
+              isAnyHovered={isAnyOptionHovered}
+              onHoverChange={setIsAnyOptionHovered}
             />
           ))}
         </div>

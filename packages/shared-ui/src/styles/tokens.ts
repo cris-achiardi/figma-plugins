@@ -40,6 +40,7 @@ export const colors = {
   bgTertiary: 'var(--figma-color-bg-tertiary, #252525)',
   bgHover: 'var(--figma-color-bg-hover, #373737)',
   bgSelected: 'var(--figma-color-bg-selected, #2D5A7B)',
+  bgBrandHover: 'var(--figma-color-bg-brand-hover, #0C8CE9)',
 
   // Border (Figma CSS Variables)
   border: 'var(--figma-color-border, #3D3D3D)',
