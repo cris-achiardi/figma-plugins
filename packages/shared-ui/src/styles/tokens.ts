@@ -28,22 +28,22 @@ export const colors = {
   purple: '#7B61FF',
   hotPink: '#FF00FF',
 
-  // Text
-  textPrimary: '#000000',
-  textSecondary: '#666666',
-  textTertiary: '#B3B3B3',
-  textOnPrimary: '#FFFFFF',
+  // Text (Dark Mode)
+  textPrimary: '#FFFFFF',
+  textSecondary: '#B3B3B3',
+  textTertiary: '#808080',
+  textOnPrimary: '#000000',
 
-  // Background
-  bgPrimary: '#FFFFFF',
-  bgSecondary: '#F5F5F5',
-  bgTertiary: '#E5E5E5',
-  bgHover: '#F0F0F0',
-  bgSelected: '#DAEBF7',
+  // Background (Dark Mode)
+  bgPrimary: '#2C2C2C',
+  bgSecondary: '#1E1E1E',
+  bgTertiary: '#252525',
+  bgHover: '#373737',
+  bgSelected: '#2D5A7B',
 
-  // Border
-  border: '#E5E5E5',
-  borderStrong: '#B3B3B3',
+  // Border (Dark Mode)
+  border: '#3D3D3D',
+  borderStrong: '#5A5A5A',
   borderFocus: '#18A0FB',
 } as const;
 
@@ -91,9 +91,9 @@ export const borderRadius = {
 } as const;
 
 export const shadows = {
-  sm: '0 1px 2px rgba(0, 0, 0, 0.06)',
-  md: '0 2px 4px rgba(0, 0, 0, 0.1)',
-  lg: '0 4px 8px rgba(0, 0, 0, 0.12)',
+  sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+  md: '0 2px 4px rgba(0, 0, 0, 0.4)',
+  lg: '0 4px 8px rgba(0, 0, 0, 0.5)',
   focus: '0 0 0 2px rgba(24, 160, 251, 0.4)',
 } as const;
 

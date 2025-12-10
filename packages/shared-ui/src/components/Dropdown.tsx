@@ -216,7 +216,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         >
           <path
             d="M1 2.5L4 5.5L7 2.5"
-            stroke="#333333"
+            stroke="#B3B3B3"
             strokeWidth="1"
             strokeLinecap="round"
             strokeLinejoin="round"
