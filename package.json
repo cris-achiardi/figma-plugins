@@ -1,0 +1,20 @@
+{
+  "name": "figma-plugins-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for Figma plugins with shared design system",
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "build:shared-ui": "npm run build --workspace=@figma-plugins/shared-ui",
+    "build:all-plugins": "npm run build --workspaces --if-present --workspace=plugins/*",
+    "dev:code-syntax": "npm run watch --workspace=code-syntax-generator"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  }
+}

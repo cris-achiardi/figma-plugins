@@ -3,10 +3,14 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# Build outputs
-*/code.js
-*/ui.js
-*/ui.html
+# Build outputs - Plugins
+plugins/*/code.js
+plugins/*/ui.js
+plugins/*/ui.html
+
+# Build outputs - Shared packages
+packages/*/dist/
+packages/*/*.tsbuildinfo
 
 # OS files
 .DS_Store
@@ -23,3 +27,6 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
