@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button, Select, Input, Checkbox, theme } from '@figma-plugins/shared-ui';
+import { Button, Dropdown, Input, Checkbox, theme } from '@figma-plugins/shared-ui';
 
 console.log('UI script executing');
 
@@ -136,10 +136,10 @@ function App() {
         Bulk Code Syntax
       </h2>
 
-      <Select
+      <Dropdown
         label="Variable Collection"
         value={selectedCollection}
-        onChange={e => setSelectedCollection(e.target.value)}
+        onChange={value => setSelectedCollection(value)}
         options={collections.length === 0
           ? [{ value: '', label: 'No collections found' }]
           : collections.map(c => ({ value: c.id, label: c.name }))
@@ -183,11 +183,11 @@ function App() {
                   label={platformLabels[platform]}
                 />
                 {platforms[platform] && (
-                  <Select
+                  <Dropdown
                     value={conventions[platform]}
-                    onChange={e => handleConventionChange(
+                    onChange={value => handleConventionChange(
                       platform,
-                      e.target.value as NamingConvention
+                      value as NamingConvention
                     )}
                     options={namingConventionOptions}
                     style={{ minWidth: '140px' }}

@@ -39,23 +39,24 @@ export const Select: React.FC<SelectProps> = ({
   };
 
   const selectStyle: CSSProperties = {
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-    fontSize: theme.typography.fontSize.md,
+    padding: '6px 24px 6px 8px',
+    height: '30px',
+    fontSize: theme.typography.fontSize.sm,
     fontFamily: theme.typography.fontFamily.default,
     color: theme.colors.textPrimary,
     backgroundColor: theme.colors.bgPrimary,
-    border: `1px solid ${error ? theme.colors.error : isFocused ? theme.colors.borderFocus : theme.colors.border}`,
-    borderRadius: theme.borderRadius.md,
+    border: `1px solid ${error ? theme.colors.error : isFocused ? theme.colors.blue : theme.colors.border}`,
+    borderRadius: '2px',
     outline: 'none',
-    transition: `border-color ${theme.transitions.fast}`,
+    transition: `all ${theme.transitions.fast}`,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.4 : 1,
     width: fullWidth ? '100%' : 'auto',
     appearance: 'none',
-    backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23333333' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 2.5L4 5.5L7 2.5' stroke='%23333333' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
     backgroundRepeat: 'no-repeat',
-    backgroundPosition: `right ${theme.spacing.sm} center`,
-    paddingRight: theme.spacing.xl,
+    backgroundPosition: 'right 8px center',
+    boxSizing: 'border-box',
     ...style,
   };
 
