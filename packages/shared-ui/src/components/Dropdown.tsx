@@ -167,6 +167,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
     flexShrink: 0,
     marginLeft: 'auto',
+    color: theme.colors.textSecondary,
   };
 
   const menuStyle: CSSProperties = {
@@ -216,7 +217,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
         >
           <path
             d="M1 2.5L4 5.5L7 2.5"
-            stroke="#B3B3B3"
+            stroke="currentColor"
             strokeWidth="1"
             strokeLinecap="round"
             strokeLinejoin="round"

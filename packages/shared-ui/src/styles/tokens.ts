@@ -28,23 +28,23 @@ export const colors = {
   purple: '#7B61FF',
   hotPink: '#FF00FF',
 
-  // Text (Dark Mode)
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B3B3B3',
-  textTertiary: '#808080',
-  textOnPrimary: '#000000',
+  // Text (Figma CSS Variables)
+  textPrimary: 'var(--figma-color-text, #FFFFFF)',
+  textSecondary: 'var(--figma-color-text-secondary, #B3B3B3)',
+  textTertiary: 'var(--figma-color-text-tertiary, #808080)',
+  textOnPrimary: 'var(--figma-color-text-onbrand, #000000)',
 
-  // Background (Dark Mode)
-  bgPrimary: '#2C2C2C',
-  bgSecondary: '#1E1E1E',
-  bgTertiary: '#252525',
-  bgHover: '#373737',
-  bgSelected: '#2D5A7B',
+  // Background (Figma CSS Variables)
+  bgPrimary: 'var(--figma-color-bg-secondary, #2C2C2C)',
+  bgSecondary: 'var(--figma-color-bg, #1E1E1E)',
+  bgTertiary: 'var(--figma-color-bg-tertiary, #252525)',
+  bgHover: 'var(--figma-color-bg-hover, #373737)',
+  bgSelected: 'var(--figma-color-bg-selected, #2D5A7B)',
 
-  // Border (Dark Mode)
-  border: '#3D3D3D',
-  borderStrong: '#5A5A5A',
-  borderFocus: '#18A0FB',
+  // Border (Figma CSS Variables)
+  border: 'var(--figma-color-border, #3D3D3D)',
+  borderStrong: 'var(--figma-color-border-strong, #5A5A5A)',
+  borderFocus: 'var(--figma-color-border-selected, #18A0FB)',
 } as const;
 
 export const spacing = {
