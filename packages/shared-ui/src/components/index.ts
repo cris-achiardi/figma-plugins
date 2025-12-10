@@ -12,3 +12,6 @@ export type { CheckboxProps } from './Checkbox';
 
 export { Dropdown } from './Dropdown';
 export type { DropdownProps, DropdownOption } from './Dropdown';
+
+export { Modal } from './Modal';
+export type { ModalProps } from './Modal';
