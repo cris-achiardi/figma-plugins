@@ -310,6 +310,7 @@ function App() {
         onClose={() => setIsAboutModalOpen(false)}
         title="About Code Syntax Generator"
         width="440px"
+        showBuyMeCoffee={true}
       >
         <div style={{
           display: 'flex',

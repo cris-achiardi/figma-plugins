@@ -1,5 +1,5 @@
 // Show UI with specified dimensions and theme colors
-figma.showUI(__html__, { width: 400, height: 560, themeColors: true });
+figma.showUI(__html__, { width: 400, height: 540, themeColors: true });
 
 // Listen for messages from UI
 figma.ui.onmessage = async (msg) => {
@@ -81,6 +81,40 @@ function buildCodeSyntax(
 }
 
 /**
+ * Normalize a path segment by removing spaces and special characters
+ * Handles compound names like "font weight" → "fontWeight"
+ */
+function normalizeSegment(segment: string, convention: string, isFirst: boolean = false): string {
+  // Split on spaces, hyphens, and underscores
+  const words = segment.split(/[\s\-_]+/).filter(w => w.length > 0);
+
+  if (words.length === 0) return '';
+
+  switch (convention) {
+    case 'camelCase':
+      return words
+        .map((w, i) => {
+          const lower = w.toLowerCase();
+          // First word of first segment stays lowercase, all others capitalize
+          return (isFirst && i === 0) ? lower : capitalize(lower);
+        })
+        .join('');
+
+    case 'snake_case':
+      return words.map(w => w.toLowerCase()).join('_');
+
+    case 'kebab-case':
+      return words.map(w => w.toLowerCase()).join('-');
+
+    case 'PascalCase':
+      return words.map(w => capitalize(w.toLowerCase())).join('');
+
+    default:
+      return segment;
+  }
+}
+
+/**
  * Format path parts according to naming convention
  */
 function formatPath(
@@ -94,27 +128,28 @@ function formatPath(
   switch (convention) {
     case 'camelCase':
       // background/primary/default → backgroundPrimaryDefault
+      // font weight/bold → fontWeightBold (handles spaces)
       formatted = parts
-        .map((p, i) => {
-          const lower = p.toLowerCase();
-          return i === 0 ? lower : lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
+        .map((p, i) => normalizeSegment(p, convention, i === 0))
         .join('');
       break;
 
     case 'snake_case':
       // background/primary/default → background_primary_default
-      formatted = parts.map(p => p.toLowerCase()).join('_');
+      // font weight/bold → font_weight_bold (handles spaces)
+      formatted = parts.map(p => normalizeSegment(p, convention)).join('_');
       break;
 
     case 'kebab-case':
       // background/primary/default → background-primary-default
-      formatted = parts.map(p => p.toLowerCase()).join('-');
+      // font weight/bold → font-weight-bold (handles spaces)
+      formatted = parts.map(p => normalizeSegment(p, convention)).join('-');
       break;
 
     case 'PascalCase':
       // background/primary/default → BackgroundPrimaryDefault
-      formatted = parts.map(capitalize).join('');
+      // font weight/bold → FontWeightBold (handles spaces)
+      formatted = parts.map(p => normalizeSegment(p, convention)).join('');
       break;
   }
 
