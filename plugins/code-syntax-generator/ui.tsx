@@ -324,9 +324,7 @@ function App() {
             color: theme.colors.textPrimary,
             fontFamily: theme.typography.fontFamily.default,
           }}>
-            This plugin allows you to programmatically add code syntax to Figma variables in bulk.
-            It helps streamline the workflow between design and development by automatically generating
-            platform-specific naming conventions for your design tokens.
+            This plugin allows you add code syntax to Figma variables in seconds. Show the actual token name in dev mode and superpower the Figma MCP with machine readable metadata that AI can use to consume your design system.
           </p>
 
           <div style={{
