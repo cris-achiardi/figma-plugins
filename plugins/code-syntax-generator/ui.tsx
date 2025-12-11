@@ -206,7 +206,7 @@ function App() {
         type="text"
         value={prefix}
         onChange={e => setPrefix(e.target.value)}
-        placeholder="e.g., ds, test-ds, myPrefix"
+        placeholder="One or multiple words separated by spaces"
         fullWidth
       />
 
