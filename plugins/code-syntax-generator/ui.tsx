@@ -224,7 +224,7 @@ function App() {
         variant="primary"
         fullWidth
       >
-        Apply Code Syntax
+        Generate Code Syntax
       </Button>
 
       {status.type && (
