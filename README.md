@@ -38,6 +38,7 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
   - Hover states for options
   - Figma-native styling throughout
 - **Checkbox** - Custom checkbox with label
+- **Modal** - Dialog component for overlays and information displays
 
 ### Design Tokens
 - Colors based on Figma's official design language
@@ -45,13 +46,16 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
 - Spacing scale
 - Border radius
 - Shadows and transitions
+- **Dark Mode Support** - Automatic theme switching using Figma CSS variables
 
 ### Usage in Plugins
 
 ```tsx
-import { Button, Input, Dropdown, Checkbox, theme } from '@figma-plugins/shared-ui';
+import { Button, Input, Dropdown, Checkbox, Modal, theme } from '@figma-plugins/shared-ui';
 
 function MyPlugin() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   return (
     <div>
       <Button variant="primary" onClick={handleClick}>
@@ -71,6 +75,13 @@ function MyPlugin() {
           { value: 'option2', label: 'Option 2' }
         ]}
       />
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="About"
+      >
+        <p>Your modal content here</p>
+      </Modal>
     </div>
   );
 }
@@ -82,16 +93,27 @@ function MyPlugin() {
 
 Programmatically add code syntax to Figma variables in bulk, eliminating manual entry for design tokens.
 
+**Status:** ✅ Published on Figma Community
+**Community Link:** https://www.figma.com/community/plugin/1580938580932953714
 **Directory:** [plugins/code-syntax-generator](plugins/code-syntax-generator/)
 
 **Features:**
 - Bulk apply code syntax to all variables in a collection
 - Support for multiple platforms (WEB, iOS, ANDROID)
 - Customizable naming conventions (camelCase, snake_case, kebab-case, PascalCase)
-- Optional prefix support with normalization
+- Optional prefix support with normalization (handles multi-word prefixes)
+- Compound variable name normalization (e.g., "colorPrimary500" → "colorPrimary_500")
+- Dark mode support with automatic theme detection
 - Built with shared UI components for consistent design
+- About modal with plugin information and support link
 
-**Quick Start:**
+**Installation:**
+
+For end users, run from the Figma Community:
+1. Visit https://www.figma.com/community/plugin/1580938580932953714
+2. Click "Run" to use it in your Figma files
+
+**Development:**
 ```bash
 # From root directory
 npm install
