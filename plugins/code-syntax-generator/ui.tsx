@@ -362,13 +362,15 @@ function App() {
                     color: theme.colors.textPrimary,
                     textDecoration: 'none',
                     fontSize: theme.typography.fontSize.sm,
-                    transition: `background-color ${theme.transitions.fast}`,
+                    transition: `background-color ${theme.transitions.fast}, color ${theme.transitions.fast}`,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgBrandHover;
+                    e.currentTarget.style.color = '#FFFFFF';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgHover;
+                    e.currentTarget.style.color = theme.colors.textPrimary;
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -390,13 +392,15 @@ function App() {
                     color: theme.colors.textPrimary,
                     textDecoration: 'none',
                     fontSize: theme.typography.fontSize.sm,
-                    transition: `background-color ${theme.transitions.fast}`,
+                    transition: `background-color ${theme.transitions.fast}, color ${theme.transitions.fast}`,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgBrandHover;
+                    e.currentTarget.style.color = '#FFFFFF';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgHover;
+                    e.currentTarget.style.color = theme.colors.textPrimary;
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -418,13 +422,15 @@ function App() {
                     color: theme.colors.textPrimary,
                     textDecoration: 'none',
                     fontSize: theme.typography.fontSize.sm,
-                    transition: `background-color ${theme.transitions.fast}`,
+                    transition: `background-color ${theme.transitions.fast}, color ${theme.transitions.fast}`,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgBrandHover;
+                    e.currentTarget.style.color = '#FFFFFF';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = theme.colors.bgHover;
+                    e.currentTarget.style.color = theme.colors.textPrimary;
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
