@@ -1,6 +1,6 @@
 {
   "name": "@figma-plugins/shared-ui",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Shared UI components for Figma plugins",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
