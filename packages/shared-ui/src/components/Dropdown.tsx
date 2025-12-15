@@ -37,14 +37,14 @@ const DropdownOptionItem: React.FC<DropdownOptionItemProps> = ({
     padding: '6px 8px',
     fontSize: theme.typography.fontSize.sm,
     fontFamily: theme.typography.fontFamily.default,
-    color: theme.colors.textPrimary,
+    color: (isHovered || (isSelected && !isAnyHovered)) ? '#FFFFFF' : theme.colors.textPrimary,
     backgroundColor: isHovered
       ? theme.colors.bgBrandHover
       : (isSelected && !isAnyHovered)
       ? theme.colors.bgBrandHover
       : 'transparent',
     cursor: 'pointer',
-    transition: `background-color ${theme.transitions.fast}`,
+    transition: `background-color ${theme.transitions.fast}, color ${theme.transitions.fast}`,
     borderRadius: '6px',
   };
 
@@ -195,7 +195,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     top: 'calc(100% + 4px)',
     left: 0,
     right: 0,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: 'var(--figma-color-bg)',
     border: 'none',
     borderRadius: '12px',
     boxShadow: theme.shadows.lg,
