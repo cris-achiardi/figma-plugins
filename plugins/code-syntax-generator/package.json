@@ -1,6 +1,6 @@
 {
   "name": "code-syntax-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Programmatically add code syntax to Figma variables in bulk",
   "main": "code.js",
   "scripts": {

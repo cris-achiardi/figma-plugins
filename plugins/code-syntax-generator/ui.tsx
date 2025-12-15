@@ -1,8 +1,9 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Button, Dropdown, Input, Checkbox, Modal, theme } from '@figma-plugins/shared-ui';
+import packageJson from './package.json';
 
-const PLUGIN_VERSION = '1.0.0';
+const PLUGIN_VERSION = packageJson.version;
 
 console.log('UI script executing');
 
