@@ -1,5 +1,5 @@
 // Show UI with specified dimensions and theme colors
-figma.showUI(__html__, { width: 400, height: 540, themeColors: true });
+figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
 
 // Listen for messages from UI
 figma.ui.onmessage = async (msg) => {
@@ -17,8 +17,79 @@ figma.ui.onmessage = async (msg) => {
     });
   }
 
+  if (msg.type === 'load-collection') {
+    const { collectionId } = msg;
+
+    // Get the selected collection
+    const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
+    if (!collection) {
+      figma.ui.postMessage({ type: 'error', message: 'Collection not found' });
+      return;
+    }
+
+    // Get all variables in the collection
+    const variablePromises = collection.variableIds.map(id =>
+      figma.variables.getVariableByIdAsync(id)
+    );
+    const variables = (await Promise.all(variablePromises)).filter(v => v !== null);
+
+    // Read existing code syntax
+    const existingSyntax: Record<string, string[]> = {
+      WEB: [],
+      iOS: [],
+      ANDROID: []
+    };
+
+    for (const variable of variables) {
+      if (variable && variable.codeSyntax) {
+        const webSyntax = variable.codeSyntax.WEB;
+        const iosSyntax = variable.codeSyntax.iOS;
+        const androidSyntax = variable.codeSyntax.ANDROID;
+
+        if (webSyntax) existingSyntax.WEB.push(webSyntax);
+        if (iosSyntax) existingSyntax.iOS.push(iosSyntax);
+        if (androidSyntax) existingSyntax.ANDROID.push(androidSyntax);
+      }
+    }
+
+    figma.ui.postMessage({
+      type: 'existing-syntax-found',
+      existingSyntax,
+      hasExisting: {
+        WEB: existingSyntax.WEB.length > 0,
+        iOS: existingSyntax.iOS.length > 0,
+        ANDROID: existingSyntax.ANDROID.length > 0
+      }
+    });
+  }
+
+  if (msg.type === 'generate-preview') {
+    const { collectionId, platform, convention, prefix, suffix, limit = 20 } = msg;
+
+    try {
+      const preview = await generatePreview(collectionId, platform, convention, prefix, suffix, limit);
+
+      // Get total count
+      const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
+      const total = collection ? collection.variableIds.length : 0;
+
+      figma.ui.postMessage({
+        type: 'preview-result',
+        platform,
+        previews: preview,
+        total,
+        showing: preview.length
+      });
+    } catch (error) {
+      figma.ui.postMessage({
+        type: 'error',
+        message: `Preview generation failed: ${error}`
+      });
+    }
+  }
+
   if (msg.type === 'apply-code-syntax') {
-    const { collectionId, platforms, conventions, prefix, normalizePrefix } = msg;
+    const { collectionId, platforms, conventions, prefixes, suffixes } = msg;
 
     // Get the selected collection
     const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
@@ -37,7 +108,7 @@ figma.ui.onmessage = async (msg) => {
     let updated = 0;
     for (const variable of variables) {
       if (variable) {
-        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefix, normalizePrefix);
+        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefixes, suffixes);
 
         // Set code syntax for each selected platform
         for (const platform of platforms) {
@@ -50,11 +121,80 @@ figma.ui.onmessage = async (msg) => {
     }
 
     figma.ui.postMessage({
-      type: 'complete',
-      count: updated
+      type: 'apply-complete',
+      count: updated,
+      platforms
+    });
+  }
+
+  if (msg.type === 'remove-code-syntax') {
+    const { collectionId, platforms } = msg;
+
+    // Get the selected collection
+    const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
+    if (!collection) {
+      figma.ui.postMessage({ type: 'error', message: 'Collection not found' });
+      return;
+    }
+
+    // Get all variables in the collection
+    const variablePromises = collection.variableIds.map(id =>
+      figma.variables.getVariableByIdAsync(id)
+    );
+    const variables = (await Promise.all(variablePromises)).filter(v => v !== null);
+
+    // Remove code syntax for selected platforms
+    let updated = 0;
+    for (const variable of variables) {
+      if (variable) {
+        for (const platform of platforms) {
+          variable.setVariableCodeSyntax(platform as 'WEB' | 'ANDROID' | 'iOS', '');
+        }
+        updated++;
+      }
+    }
+
+    figma.ui.postMessage({
+      type: 'remove-complete',
+      count: updated,
+      platforms
     });
   }
 };
+
+/**
+ * Generate preview for a collection
+ */
+async function generatePreview(
+  collectionId: string,
+  platform: string,
+  convention: string,
+  prefix: string,
+  suffix: string,
+  limit: number = 20
+): Promise<Array<{ original: string; generated: string }>> {
+  const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
+  if (!collection) {
+    return [];
+  }
+
+  const variablePromises = collection.variableIds.map(id =>
+    figma.variables.getVariableByIdAsync(id)
+  );
+  const variables = (await Promise.all(variablePromises)).filter(v => v !== null);
+
+  const previewLimit = Math.min(limit, variables.length);
+
+  return variables.slice(0, previewLimit).map(variable => ({
+    original: variable!.name,
+    generated: formatPath(
+      variable!.name.split('/'),
+      convention,
+      prefix,
+      suffix
+    )
+  }));
+}
 
 /**
  * Build code syntax object for a variable
@@ -63,8 +203,8 @@ function buildCodeSyntax(
   variable: Variable,
   platforms: string[],
   conventions: Record<string, string>,
-  prefix: string,
-  normalizePrefix: boolean
+  prefixes: Record<string, string>,
+  suffixes: Record<string, string>
 ): Record<string, string> {
   // Parse variable path from hierarchical name
   // Figma variables use "/" as separator: "background/primary/default"
@@ -74,10 +214,23 @@ function buildCodeSyntax(
 
   for (const platform of platforms) {
     const convention = conventions[platform];
-    syntax[platform] = formatPath(path, convention, prefix, normalizePrefix);
+    const prefix = prefixes[platform];
+    const suffix = suffixes[platform];
+    syntax[platform] = formatPath(path, convention, prefix, suffix);
   }
 
   return syntax;
+}
+
+/**
+ * Apply template to normalized token
+ */
+function applyTemplate(
+  normalizedToken: string,
+  prefix: string,
+  suffix: string
+): string {
+  return `${prefix}${normalizedToken}${suffix}`;
 }
 
 /**
@@ -115,91 +268,42 @@ function normalizeSegment(segment: string, convention: string, isFirst: boolean 
 }
 
 /**
- * Format path parts according to naming convention
+ * Format path parts according to naming convention with template
  */
 function formatPath(
   parts: string[],
   convention: string,
   prefix: string,
-  normalizePrefix: boolean
+  suffix: string
 ): string {
-  let formatted = '';
+  // Normalize each segment according to convention
+  const normalizedSegments = parts.map((segment, index) =>
+    normalizeSegment(segment, convention, index === 0)
+  );
 
+  // Join segments with appropriate separator
+  const separator = getSeparatorForConvention(convention);
+  const normalizedToken = normalizedSegments.join(separator);
+
+  // Apply template
+  return applyTemplate(normalizedToken, prefix, suffix);
+}
+
+/**
+ * Get separator for naming convention
+ */
+function getSeparatorForConvention(convention: string): string {
   switch (convention) {
     case 'camelCase':
-      // background/primary/default → backgroundPrimaryDefault
-      // font weight/bold → fontWeightBold (handles spaces)
-      formatted = parts
-        .map((p, i) => normalizeSegment(p, convention, i === 0))
-        .join('');
-      break;
-
-    case 'snake_case':
-      // background/primary/default → background_primary_default
-      // font weight/bold → font_weight_bold (handles spaces)
-      formatted = parts.map(p => normalizeSegment(p, convention)).join('_');
-      break;
-
-    case 'kebab-case':
-      // background/primary/default → background-primary-default
-      // font weight/bold → font-weight-bold (handles spaces)
-      formatted = parts.map(p => normalizeSegment(p, convention)).join('-');
-      break;
-
     case 'PascalCase':
-      // background/primary/default → BackgroundPrimaryDefault
-      // font weight/bold → FontWeightBold (handles spaces)
-      formatted = parts.map(p => normalizeSegment(p, convention)).join('');
-      break;
+      return '';
+    case 'snake_case':
+      return '_';
+    case 'kebab-case':
+      return '-';
+    default:
+      return '';
   }
-
-  // Add prefix if provided
-  if (prefix) {
-    if (normalizePrefix) {
-      // Normalize prefix to match convention
-      switch (convention) {
-        case 'camelCase':
-          // Split on separators and spaces, then convert to camelCase
-          const camelParts = prefix.split(/[-_\s]+/).filter(p => p.length > 0);
-          const camelPrefix = camelParts
-            .map((p, i) => i === 0 ? p.toLowerCase() : capitalize(p))
-            .join('');
-          formatted = camelPrefix + capitalize(formatted);
-          break;
-
-        case 'snake_case':
-          // Replace hyphens and spaces with underscores, convert to lowercase
-          const snakePrefix = prefix.toLowerCase().replace(/[-\s]+/g, '_');
-          formatted = `${snakePrefix}_${formatted}`;
-          break;
-
-        case 'kebab-case':
-          // Replace underscores and spaces with hyphens, convert to lowercase
-          const kebabPrefix = prefix.toLowerCase().replace(/[_\s]+/g, '-');
-          formatted = `${kebabPrefix}-${formatted}`;
-          break;
-
-        case 'PascalCase':
-          // Split on separators and spaces, then convert to PascalCase
-          const pascalParts = prefix.split(/[-_\s]+/).filter(p => p.length > 0);
-          const pascalPrefix = pascalParts.map(capitalize).join('');
-          formatted = pascalPrefix + formatted;
-          break;
-      }
-    } else {
-      // Use prefix as-is, just add appropriate separator
-      if (convention === 'camelCase') {
-        formatted = prefix + capitalize(formatted);
-      } else if (convention === 'PascalCase') {
-        formatted = prefix + formatted;
-      } else {
-        const separator = convention === 'snake_case' ? '_' : '-';
-        formatted = `${prefix}${separator}${formatted}`;
-      }
-    }
-  }
-
-  return formatted;
 }
 
 /**
