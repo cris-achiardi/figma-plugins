@@ -45,9 +45,9 @@ export const Button: React.FC<ButtonProps> = ({
       case 'secondary':
         return {
           ...baseStyles,
-          backgroundColor: theme.colors.bgPrimary,
+          backgroundColor: theme.colors.bgSecondary,
           color: theme.colors.textPrimary,
-          border: `1px solid ${theme.colors.border}`,
+          border: `1px solid ${theme.colors.gray650}`,
         };
       case 'tertiary':
         return {

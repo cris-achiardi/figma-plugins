@@ -129,13 +129,17 @@ figma.ui.onmessage = async (msg) => {
 
   if (msg.type === 'remove-code-syntax') {
     const { collectionId, platforms } = msg;
+    console.log('Remove code syntax request:', { collectionId, platforms });
 
     // Get the selected collection
     const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
     if (!collection) {
+      console.log('Collection not found:', collectionId);
       figma.ui.postMessage({ type: 'error', message: 'Collection not found' });
       return;
     }
+
+    console.log('Collection found:', collection.name, 'Variables:', collection.variableIds.length);
 
     // Get all variables in the collection
     const variablePromises = collection.variableIds.map(id =>
@@ -143,16 +147,26 @@ figma.ui.onmessage = async (msg) => {
     );
     const variables = (await Promise.all(variablePromises)).filter(v => v !== null);
 
+    console.log('Loaded variables:', variables.length);
+
     // Remove code syntax for selected platforms
     let updated = 0;
     for (const variable of variables) {
       if (variable) {
         for (const platform of platforms) {
-          variable.setVariableCodeSyntax(platform as 'WEB' | 'ANDROID' | 'iOS', '');
+          console.log(`Removing ${platform} code syntax from ${variable.name}`);
+          // Check if the variable has code syntax for this platform before attempting to remove
+          const currentSyntax = variable.codeSyntax?.[platform as 'WEB' | 'ANDROID' | 'iOS'];
+          if (currentSyntax) {
+            // Use the proper removeVariableCodeSyntax method
+            variable.removeVariableCodeSyntax(platform as 'WEB' | 'ANDROID' | 'iOS');
+          }
         }
         updated++;
       }
     }
+
+    console.log('Remove complete, updated:', updated);
 
     figma.ui.postMessage({
       type: 'remove-complete',

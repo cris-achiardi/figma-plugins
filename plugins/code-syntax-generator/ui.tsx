@@ -319,6 +319,12 @@ function App() {
     const enabledPlatforms = (Object.keys(platforms) as Platform[])
       .filter(platform => platforms[platform]);
 
+    console.log('handleRemove called', {
+      selectedCollection,
+      platforms,
+      enabledPlatforms
+    });
+
     if (enabledPlatforms.length === 0) {
       setStatus({
         type: 'error',
@@ -326,6 +332,11 @@ function App() {
       });
       return;
     }
+
+    console.log('Sending remove-code-syntax message:', {
+      collectionId: selectedCollection,
+      platforms: enabledPlatforms
+    });
 
     parent.postMessage({
       pluginMessage: {
@@ -411,7 +422,8 @@ function App() {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '280px 1fr',
+      gridTemplateColumns: '340px 1fr',
+      gridTemplateRows: '1fr auto',
       height: '100%',
       fontFamily: theme.typography.fontFamily.default,
       gap: 0,
@@ -485,65 +497,6 @@ function App() {
           onChange={e => setRemoveMode(e.target.checked)}
           label="Remove code syntax from selected collection"
         />
-
-        {removeMode && (
-          <Button
-            onClick={handleRemove}
-            disabled={!selectedCollection || !Object.values(platforms).some(Boolean)}
-            variant="secondary"
-            fullWidth
-          >
-            Remove Code Syntax
-          </Button>
-        )}
-
-        {/* Footer with version and info icon */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingTop: theme.spacing.md,
-          borderTop: `1px solid ${theme.colors.border}`,
-          marginTop: 'auto',
-        }}>
-          <span style={{
-            fontSize: theme.typography.fontSize.xs,
-            color: theme.colors.textSecondary,
-          }}>
-            v{PLUGIN_VERSION}
-          </span>
-          <button
-            onClick={() => setIsAboutModalOpen(true)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: 0,
-              width: '24px',
-              height: '24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: '4px',
-              color: theme.colors.textSecondary,
-              transition: `all ${theme.transitions.fast}`,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme.colors.bgHover;
-              e.currentTarget.style.color = theme.colors.textPrimary;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = theme.colors.textSecondary;
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1" />
-              <path d="M8 7V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <circle cx="8" cy="5" r="0.5" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
       </div>
 
       {/* RIGHT PANEL */}
@@ -554,54 +507,90 @@ function App() {
         gap: theme.spacing.lg,
         overflowY: 'auto',
       }}>
-        {/* Platform Tabs */}
-        <div style={{
-          display: 'flex',
-          gap: theme.spacing.xs,
-          borderBottom: `1px solid ${theme.colors.border}`,
-        }}>
-          {(Object.keys(platforms) as Platform[]).map(platform => {
-            const isEnabled = platforms[platform];
-            const isActive = activeTab === platform && isEnabled;
-
-            return (
-              <button
-                key={platform}
-                onClick={() => isEnabled && setActiveTab(platform)}
-                disabled={!isEnabled || removeMode}
-                style={{
-                  padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-                  border: 'none',
-                  borderBottom: isActive ? `2px solid ${theme.colors.blue}` : '2px solid transparent',
-                  background: 'none',
-                  color: isEnabled ? (isActive ? theme.colors.blue : theme.colors.textPrimary) : theme.colors.textSecondary,
-                  fontWeight: isActive ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium,
-                  fontSize: theme.typography.fontSize.md,
-                  cursor: isEnabled && !removeMode ? 'pointer' : 'not-allowed',
-                  opacity: isEnabled ? 1 : 0.5,
-                  transition: `all ${theme.transitions.fast}`,
-                  fontFamily: theme.typography.fontFamily.default,
-                }}
-                onMouseEnter={(e) => {
-                  if (isEnabled && !removeMode && !isActive) {
-                    e.currentTarget.style.color = theme.colors.blue;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (isEnabled && !removeMode && !isActive) {
-                    e.currentTarget.style.color = theme.colors.textPrimary;
-                  }
-                }}
-              >
-                {platformLabels[platform]}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Template Input */}
-        {!removeMode && (
+        {removeMode ? (
           <>
+            {/* Remove Mode Content */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flex: 1,
+              gap: theme.spacing.lg,
+              textAlign: 'center',
+            }}>
+              <div style={{
+                fontSize: theme.typography.fontSize.lg,
+                fontWeight: theme.typography.fontWeight.semibold,
+                color: theme.colors.textPrimary,
+              }}>
+                Remove Code Syntax
+              </div>
+              <div style={{
+                fontSize: theme.typography.fontSize.sm,
+                color: theme.colors.textSecondary,
+                maxWidth: '400px',
+              }}>
+                This will remove code syntax from all variables in the selected collection for the checked platforms.
+              </div>
+              <Button
+                onClick={handleRemove}
+                disabled={!selectedCollection || !Object.values(platforms).some(Boolean)}
+                variant="primary"
+                style={{ minWidth: '200px' }}
+              >
+                Remove Code Syntax
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Platform Tabs */}
+            <div style={{
+              display: 'flex',
+              gap: theme.spacing.xs,
+              borderBottom: `1px solid ${theme.colors.border}`,
+            }}>
+              {(Object.keys(platforms) as Platform[]).map(platform => {
+                const isEnabled = platforms[platform];
+                const isActive = activeTab === platform && isEnabled;
+
+                return (
+                  <button
+                    key={platform}
+                    onClick={() => isEnabled && setActiveTab(platform)}
+                    disabled={!isEnabled}
+                    style={{
+                      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+                      border: 'none',
+                      borderBottom: isActive ? `2px solid ${theme.colors.blue}` : '2px solid transparent',
+                      background: 'none',
+                      color: isEnabled ? (isActive ? theme.colors.blue : theme.colors.textPrimary) : theme.colors.textSecondary,
+                      fontWeight: isActive ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.medium,
+                      fontSize: theme.typography.fontSize.md,
+                      cursor: isEnabled ? 'pointer' : 'not-allowed',
+                      opacity: isEnabled ? 1 : 0.5,
+                      transition: `all ${theme.transitions.fast}`,
+                      fontFamily: theme.typography.fontFamily.default,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isEnabled && !isActive) {
+                        e.currentTarget.style.color = theme.colors.blue;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (isEnabled && !isActive) {
+                        e.currentTarget.style.color = theme.colors.textPrimary;
+                      }
+                    }}
+                  >
+                    {platformLabels[platform]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Template Input */}
             <div>
               <label style={{
                 display: 'block',
@@ -649,7 +638,7 @@ function App() {
             <Button
               onClick={handleApplyTemplate}
               disabled={!selectedCollection || !platforms[activeTab]}
-              variant="primary"
+              variant="secondary"
               fullWidth
             >
               {isGeneratingPreview ? 'Generating Preview...' : 'Apply Template'}
@@ -779,6 +768,54 @@ function App() {
             {status.message}
           </div>
         )}
+      </div>
+
+      {/* Footer with version and info icon - spans both columns */}
+      <div style={{
+        gridColumn: '1 / -1',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: theme.spacing.lg,
+        borderTop: `1px solid ${theme.colors.border}`,
+      }}>
+        <span style={{
+          fontSize: theme.typography.fontSize.xs,
+          color: theme.colors.textSecondary,
+        }}>
+          v{PLUGIN_VERSION}
+        </span>
+        <button
+          onClick={() => setIsAboutModalOpen(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '4px',
+            color: theme.colors.textSecondary,
+            transition: `all ${theme.transitions.fast}`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.bgHover;
+            e.currentTarget.style.color = theme.colors.textPrimary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = theme.colors.textSecondary;
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1" />
+            <path d="M8 7V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="8" cy="5" r="0.5" fill="currentColor" />
+          </svg>
+        </button>
       </div>
 
       {/* About Modal */}
