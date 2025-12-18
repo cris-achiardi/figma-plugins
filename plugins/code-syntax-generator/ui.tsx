@@ -597,52 +597,82 @@ function App() {
                 fontSize: theme.typography.fontSize.sm,
                 fontWeight: theme.typography.fontWeight.medium,
                 color: theme.colors.textPrimary,
-                marginBottom: theme.spacing.xs,
+                marginBottom: theme.spacing.lg,
               }}>
                 Custom Template
               </label>
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr auto 1fr',
+                display: 'flex',
                 gap: theme.spacing.sm,
                 alignItems: 'center',
               }}>
-                <Input
-                  type="text"
-                  value={templatePrefixes[activeTab]}
-                  onChange={e => handleTemplatePrefixChange(activeTab, e.target.value)}
-                  placeholder="var(--ds-"
-                  fullWidth
-                />
+                {/* Combined Template Field */}
                 <div style={{
-                  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-                  backgroundColor: theme.colors.bgSecondary,
-                  borderRadius: theme.borderRadius.sm,
-                  fontSize: theme.typography.fontSize.sm,
-                  color: theme.colors.textSecondary,
-                  fontWeight: theme.typography.fontWeight.semibold,
-                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: theme.spacing.xs,
+                  padding: theme.spacing.sm,
+                  backgroundColor: theme.colors.bgPrimary,
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: theme.borderRadius.md,
+                  height: '30px',
+                  flex: 1,
                 }}>
-                  {'{token}'}
+                  <input
+                    type="text"
+                    value={templatePrefixes[activeTab]}
+                    onChange={e => handleTemplatePrefixChange(activeTab, e.target.value)}
+                    placeholder="vars(--ds-"
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: theme.colors.textPrimary,
+                      fontSize: theme.typography.fontSize.md,
+                      fontFamily: theme.typography.fontFamily.mono,
+                      minWidth: '60px',
+                    }}
+                  />
+                  <div style={{
+                    padding: '2px',
+                    backgroundColor: '#1E1E1E',
+                    borderRadius: '4px',
+                    fontSize: theme.typography.fontSize.xs,
+                    color: theme.colors.white,
+                    fontWeight: theme.typography.fontWeight.semibold,
+                    whiteSpace: 'nowrap',
+                    userSelect: 'none',
+                  }}>
+                    {'{token}'}
+                  </div>
+                  <input
+                    type="text"
+                    value={templateSuffixes[activeTab]}
+                    onChange={e => handleTemplateSuffixChange(activeTab, e.target.value)}
+                    placeholder=")"
+                    style={{
+                      flex: 1,
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: theme.colors.textPrimary,
+                      fontSize: theme.typography.fontSize.md,
+                      fontFamily: theme.typography.fontFamily.mono,
+                      minWidth: '60px',
+                    }}
+                  />
                 </div>
-                <Input
-                  type="text"
-                  value={templateSuffixes[activeTab]}
-                  onChange={e => handleTemplateSuffixChange(activeTab, e.target.value)}
-                  placeholder=")"
-                  fullWidth
-                />
+                <Button
+                  onClick={handleApplyTemplate}
+                  disabled={!selectedCollection || !platforms[activeTab]}
+                  variant="primary"
+                  style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', margin: 0 }}
+                >
+                  {isGeneratingPreview ? 'Generating...' : 'Apply Template'}
+                </Button>
               </div>
             </div>
-
-            <Button
-              onClick={handleApplyTemplate}
-              disabled={!selectedCollection || !platforms[activeTab]}
-              variant="secondary"
-              fullWidth
-            >
-              {isGeneratingPreview ? 'Generating Preview...' : 'Apply Template'}
-            </Button>
 
             {/* Preview Panel */}
             <div>
@@ -680,7 +710,7 @@ function App() {
                 maxHeight: '400px',
                 overflowY: 'auto',
                 backgroundColor: theme.colors.bgSecondary,
-                fontFamily: theme.typography.fontFamily.code,
+                fontFamily: theme.typography.fontFamily.mono,
                 fontSize: theme.typography.fontSize.sm,
               }}>
                 {previews[activeTab].length === 0 ? (

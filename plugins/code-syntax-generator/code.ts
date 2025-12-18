@@ -1,5 +1,5 @@
 // Show UI with specified dimensions and theme colors
-figma.showUI(__html__, { width: 800, height: 600, themeColors: true });
+figma.showUI(__html__, { width: 800, height: 680, themeColors: true });
 
 // Listen for messages from UI
 figma.ui.onmessage = async (msg) => {
