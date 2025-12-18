@@ -18,3 +18,6 @@ export type { DropdownProps, DropdownOption } from './Dropdown';
 
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
+
+export { Tabs } from './Tabs';
+export type { TabsProps, Tab } from './Tabs';

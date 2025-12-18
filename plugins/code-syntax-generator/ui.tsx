@@ -241,7 +241,7 @@ function App() {
     if (!selectedCollection) return;
 
     setIsGeneratingPreview(true);
-    const limit = previewExpanded[activeTab] ? 1000 : 20;
+    const limit = previewExpanded[activeTab] ? 1000 : 10;
 
     parent.postMessage({
       pluginMessage: {
@@ -281,7 +281,7 @@ function App() {
       // Show less: just slice existing preview
       setPreviews(prev => ({
         ...prev,
-        [activeTab]: prev[activeTab].slice(0, 20)
+        [activeTab]: prev[activeTab].slice(0, 10)
       }));
     }
   };
@@ -670,13 +670,14 @@ function App() {
                   fontSize: theme.typography.fontSize.sm,
                   fontWeight: theme.typography.fontWeight.medium,
                   color: theme.colors.textPrimary,
+                  marginTop: '20px',
                 }}>
                   {hasExistingSyntax[activeTab] && previews[activeTab].length > 0 && previews[activeTab][0].original === ''
                     ? 'Preview - Existing Code Syntax'
                     : `Preview (showing ${previews[activeTab].length} of ${previewTotals[activeTab]})`
                   }
                 </label>
-                {previews[activeTab].length > 0 && previewTotals[activeTab] > 20 && (
+                {previews[activeTab].length > 0 && previewTotals[activeTab] > 10 && (
                   <Button
                     onClick={handleTogglePreviewExpand}
                     variant="tertiary"
@@ -690,8 +691,7 @@ function App() {
                 border: `1px solid ${theme.colors.border}`,
                 borderRadius: theme.borderRadius.md,
                 padding: theme.spacing.md,
-                minHeight: '200px',
-                maxHeight: '400px',
+                height: '300px',
                 overflowY: 'auto',
                 backgroundColor: theme.colors.bgSecondary,
                 fontFamily: theme.typography.fontFamily.mono,
