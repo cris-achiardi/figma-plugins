@@ -1,21 +1,42 @@
-import React, { CSSProperties, InputHTMLAttributes } from 'react';
+import React, { CSSProperties, ChangeEvent, FocusEvent, KeyboardEvent } from 'react';
 import { theme } from '../styles/theme';
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface InputProps {
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  onFocus?: (e: FocusEvent<HTMLDivElement>) => void;
+  onBlur?: (e: FocusEvent<HTMLDivElement>) => void;
+  onKeyDown?: (e: KeyboardEvent<HTMLDivElement>) => void;
+  placeholder?: string;
+  type?: string;
+  disabled?: boolean;
   label?: string;
   error?: string;
   fullWidth?: boolean;
+  style?: CSSProperties;
 }
 
 export const Input: React.FC<InputProps> = ({
+  value = '',
+  onChange,
+  onFocus,
+  onBlur,
+  onKeyDown,
+  placeholder = '',
+  type = 'text',
+  disabled = false,
   label,
   error,
   fullWidth = false,
-  disabled = false,
   style,
-  ...inputProps
 }) => {
   const [isFocused, setIsFocused] = React.useState(false);
+  const [internalValue, setInternalValue] = React.useState(value);
+  const inputRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setInternalValue(value);
+  }, [value]);
 
   const containerStyle: CSSProperties = {
     display: 'flex',
@@ -31,7 +52,9 @@ export const Input: React.FC<InputProps> = ({
     fontFamily: theme.typography.fontFamily.default,
   };
 
-  const inputStyle: CSSProperties = {
+  const inputWrapperStyle: CSSProperties = {
+    display: 'block',
+    boxSizing: 'border-box',
     padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
     fontSize: theme.typography.fontSize.md,
     fontFamily: theme.typography.fontFamily.default,
@@ -44,7 +67,41 @@ export const Input: React.FC<InputProps> = ({
     cursor: disabled ? 'not-allowed' : 'text',
     opacity: disabled ? 0.4 : 1,
     width: fullWidth ? '100%' : 'auto',
+    height: '30px',
+    margin: 0,
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    position: 'relative',
     ...style,
+  };
+
+  const hiddenInputStyle: CSSProperties = {
+    position: 'absolute',
+    opacity: 0,
+    pointerEvents: 'none',
+    width: 0,
+    height: 0,
+  };
+
+  const handleWrapperClick = () => {
+    if (!disabled && inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setInternalValue(e.target.value);
+    onChange?.(e);
+  };
+
+  const handleFocus = (e: FocusEvent<HTMLDivElement>) => {
+    setIsFocused(true);
+    onFocus?.(e);
+  };
+
+  const handleBlur = (e: FocusEvent<HTMLDivElement>) => {
+    setIsFocused(false);
+    onBlur?.(e);
   };
 
   const errorStyle: CSSProperties = {
@@ -53,22 +110,39 @@ export const Input: React.FC<InputProps> = ({
     fontFamily: theme.typography.fontFamily.default,
   };
 
+  const displayValue = internalValue || '';
+  const showPlaceholder = !displayValue && placeholder;
+
   return (
     <div style={containerStyle}>
-      {label && <label style={labelStyle}>{label}</label>}
-      <input
-        {...inputProps}
-        disabled={disabled}
-        style={inputStyle}
-        onFocus={(e) => {
-          setIsFocused(true);
-          inputProps.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          setIsFocused(false);
-          inputProps.onBlur?.(e);
-        }}
-      />
+      {label && <div style={labelStyle}>{label}</div>}
+      <div
+        style={inputWrapperStyle}
+        onClick={handleWrapperClick}
+      >
+        <input
+          ref={inputRef as any}
+          type={type}
+          value={internalValue}
+          onChange={handleChange}
+          onFocus={handleFocus as any}
+          onBlur={handleBlur as any}
+          onKeyDown={onKeyDown as any}
+          disabled={disabled}
+          placeholder={placeholder}
+          style={hiddenInputStyle}
+        />
+        <div style={{
+          position: 'absolute',
+          top: theme.spacing.xs,
+          left: theme.spacing.sm,
+          right: theme.spacing.sm,
+          color: showPlaceholder ? theme.colors.textSecondary : theme.colors.textPrimary,
+          pointerEvents: 'none',
+        }}>
+          {showPlaceholder ? placeholder : displayValue}
+        </div>
+      </div>
       {error && <span style={errorStyle}>{error}</span>}
     </div>
   );

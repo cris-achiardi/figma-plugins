@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
-import { Button, Dropdown, Input, Checkbox, Modal, theme } from '@figma-plugins/shared-ui';
+import { Button, Dropdown, Input, CustomInput, Checkbox, Modal, theme } from '@figma-plugins/shared-ui';
 import packageJson from './package.json';
 
 const PLUGIN_VERSION = packageJson.version;
@@ -492,6 +492,13 @@ function App() {
           </div>
         </fieldset>
 
+        {/* Divider */}
+        <div style={{
+          height: '1px',
+          backgroundColor: theme.colors.border,
+          margin: `${theme.spacing.xs} 0`,
+        }} />
+
         <Checkbox
           checked={removeMode}
           onChange={e => setRemoveMode(e.target.checked)}
@@ -597,7 +604,7 @@ function App() {
                 fontSize: theme.typography.fontSize.sm,
                 fontWeight: theme.typography.fontWeight.medium,
                 color: theme.colors.textPrimary,
-                marginBottom: theme.spacing.lg,
+                marginBottom: theme.spacing.md,
               }}>
                 Custom Template
               </label>
@@ -606,68 +613,45 @@ function App() {
                 gap: theme.spacing.sm,
                 alignItems: 'center',
               }}>
-                {/* Combined Template Field */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: theme.spacing.xs,
-                  padding: theme.spacing.sm,
-                  backgroundColor: theme.colors.bgPrimary,
-                  border: `1px solid ${theme.colors.border}`,
-                  borderRadius: theme.borderRadius.md,
-                  height: '30px',
-                  flex: 1,
-                }}>
-                  <input
-                    type="text"
+                <div style={{ flex: 1 }}>
+                  <CustomInput
                     value={templatePrefixes[activeTab]}
                     onChange={e => handleTemplatePrefixChange(activeTab, e.target.value)}
-                    placeholder="vars(--ds-"
+                    placeholder="var(--ds-"
                     style={{
-                      flex: 1,
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      color: theme.colors.textPrimary,
-                      fontSize: theme.typography.fontSize.md,
                       fontFamily: theme.typography.fontFamily.mono,
-                      minWidth: '60px',
                     }}
+                    fullWidth
                   />
-                  <div style={{
-                    padding: '2px',
-                    backgroundColor: '#1E1E1E',
-                    borderRadius: '4px',
-                    fontSize: theme.typography.fontSize.xs,
-                    color: theme.colors.white,
-                    fontWeight: theme.typography.fontWeight.semibold,
-                    whiteSpace: 'nowrap',
-                    userSelect: 'none',
-                  }}>
-                    {'{token}'}
-                  </div>
-                  <input
-                    type="text"
+                </div>
+                <div style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#1E1E1E',
+                  borderRadius: '4px',
+                  fontSize: theme.typography.fontSize.md,
+                  color: theme.colors.white,
+                  fontWeight: theme.typography.fontWeight.semibold,
+                  whiteSpace: 'nowrap',
+                  userSelect: 'none',
+                }}>
+                  {'{token}'}
+                </div>
+                <div style={{ width: '50px' }}>
+                  <CustomInput
                     value={templateSuffixes[activeTab]}
                     onChange={e => handleTemplateSuffixChange(activeTab, e.target.value)}
                     placeholder=")"
                     style={{
-                      flex: 1,
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      color: theme.colors.textPrimary,
-                      fontSize: theme.typography.fontSize.md,
                       fontFamily: theme.typography.fontFamily.mono,
-                      minWidth: '60px',
                     }}
+                    fullWidth
                   />
                 </div>
                 <Button
                   onClick={handleApplyTemplate}
                   disabled={!selectedCollection || !platforms[activeTab]}
                   variant="primary"
-                  style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', margin: 0 }}
+                  style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', margin: 0, whiteSpace: 'nowrap' }}
                 >
                   {isGeneratingPreview ? 'Generating...' : 'Apply Template'}
                 </Button>
