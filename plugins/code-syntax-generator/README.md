@@ -11,20 +11,30 @@ This Figma plugin allows you to bulk apply code syntax to all variables in a col
 
 ## Features
 
-- **Bulk Operations** - Apply code syntax to all variables in a collection at once
-- **Multi-Platform Support** - WEB, iOS, and ANDROID platforms
-- **Flexible Naming Conventions**:
-  - camelCase (e.g., `colorPrimary500`)
-  - snake_case (e.g., `color_primary_500`)
-  - kebab-case (e.g., `color-primary-500`)
-  - PascalCase (e.g., `ColorPrimary500`)
-- **Prefix Normalization** - Optional prefix with intelligent normalization
-  - Handles multi-word prefixes (e.g., "design tokens" becomes "designTokens")
-  - Automatically applies selected naming convention to prefixes
-- **Compound Variable Normalization** - Smart handling of compound names
-  - Converts `colorPrimary500` → `colorPrimary_500`
-  - Converts `spacingLg8` → `spacingLg_8`
-  - Ensures consistent token structure
+### v2.0 - Template System
+- **Template System** - Define custom code syntax with prefix + `{token}` + suffix pattern
+  - Example: `tokens.` + `{token}` → `tokens.colorPrimary500`
+  - Example: `$` + `{token}` + `-ios` → `$colorPrimary500-ios`
+- **Per-Platform Configuration** - Independent templates and conventions for each platform
+  - WEB, iOS, and ANDROID platforms with separate configurations
+  - Each platform remembers its own template and naming convention
+- **Platform Tabs** - Easy switching between platform configurations with visual states
+- **Live Preview Panel** - See generated code syntax before applying
+  - Default: Shows first 10 variables
+  - Expandable: Click "Preview All" to see all variables
+  - Scrollable when content exceeds panel height (fixed 300px)
+- **LocalStorage Persistence** - Templates automatically saved per collection and platform
+  - No need to re-enter templates when switching collections or reopening plugin
+
+### Naming Conventions
+- **camelCase** (e.g., `colorPrimary500`)
+- **snake_case** (e.g., `color_primary_500`)
+- **kebab-case** (e.g., `color-primary-500`)
+- **PascalCase** (e.g., `ColorPrimary500`)
+
+### Other Features
+- **Remove Mode** - Dedicated workflow to remove code syntax from all variables
+- **Two-Panel Layout** - Intuitive interface with configuration (left) and preview (right)
 - **Dark Mode Support** - Automatic theme detection using Figma CSS variables
 - **About Modal** - Plugin information and support link (Buy Me a Coffee)
 - **Modern UI** - Built with shared component library for consistent Figma-native experience
@@ -56,14 +66,26 @@ This Figma plugin allows you to bulk apply code syntax to all variables in a col
 
 ## Usage
 
+### Applying Code Syntax (v2.0)
+
 1. Open a Figma file with variable collections
 2. Run the plugin from **Plugins** → **Code Syntax Generator**
 3. Select your variable collection from the dropdown
-4. Choose your target platform (WEB, iOS, ANDROID)
-5. Select your preferred naming convention
-6. (Optional) Add a prefix and enable normalization
-7. (Optional) Enable compound variable normalization
-8. Click "Generate Code Syntax"
+4. Choose your target platform using the tabs (WEB, iOS, ANDROID)
+5. Enter your template with prefix and/or suffix around `{token}`:
+   - Example: `tokens.{token}` for Web
+   - Example: `${token}-ios` for iOS
+   - Example: `theme_{token}` for Android
+6. Select your preferred naming convention (camelCase, snake_case, kebab-case, PascalCase)
+7. Preview the generated code syntax in the right panel
+8. Click "Apply Template" to apply the code syntax to all variables
+9. Templates are automatically saved per collection and platform
+
+### Removing Code Syntax
+
+1. Check "Remove code syntax from all variables in this collection"
+2. Review the variables that will be affected in the preview panel
+3. Click "Remove Code Syntax" to remove all code syntax
 
 ## Development
 
@@ -119,10 +141,11 @@ plugins/code-syntax-generator/
 
 This plugin uses the monorepo's shared UI library (`@figma-plugins/shared-ui`):
 
-- **Button** - Primary action buttons
-- **Dropdown** - Custom dropdown with keyboard navigation
-- **Input** - Text input for prefix
-- **Checkbox** - Toggle options
+- **Button** - Primary and secondary action buttons
+- **CustomInput** - Content-editable template input (bypasses Figma's default styling)
+- **Dropdown** - Custom dropdown with keyboard navigation for collections and conventions
+- **Tabs** - Platform switching with visual states
+- **Checkbox** - Toggle options like "Remove mode"
 - **Modal** - About dialog
 
 All components support dark mode automatically via Figma CSS variables.
@@ -133,7 +156,7 @@ If you find this plugin helpful, consider [supporting the developer](https://buy
 
 ## Version
 
-Current version: 1.0.0
+Current version: 2.0.0
 
 ## License
 

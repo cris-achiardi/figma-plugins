@@ -30,6 +30,7 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
 ### Components
 - **Button** - Primary, secondary, and tertiary variants
 - **Input** - Text input with label and error states
+- **CustomInput** - Content-editable input component that bypasses Figma's default styling conflicts
 - **Select** - Native dropdown with Figma styling (fallback option)
 - **Dropdown** - Custom dropdown with fully styled menu and keyboard navigation
   - Fully customizable dropdown menu (not limited by browser defaults)
@@ -38,6 +39,7 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
   - Hover states for options
   - Figma-native styling throughout
 - **Checkbox** - Custom checkbox with label
+- **Tabs** - Tab navigation component with hover effects and disabled state support
 - **Modal** - Dialog component for overlays and information displays
 
 ### Design Tokens
@@ -51,13 +53,22 @@ The `@figma-plugins/shared-ui` package provides a consistent design system for a
 ### Usage in Plugins
 
 ```tsx
-import { Button, Input, Dropdown, Checkbox, Modal, theme } from '@figma-plugins/shared-ui';
+import { Button, Input, CustomInput, Dropdown, Checkbox, Tabs, Modal, theme } from '@figma-plugins/shared-ui';
 
 function MyPlugin() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('tab1');
 
   return (
     <div>
+      <Tabs
+        tabs={[
+          { id: 'tab1', label: 'Tab 1' },
+          { id: 'tab2', label: 'Tab 2' }
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
       <Button variant="primary" onClick={handleClick}>
         Apply Changes
       </Button>
@@ -65,6 +76,12 @@ function MyPlugin() {
         label="Name"
         value={name}
         onChange={e => setName(e.target.value)}
+      />
+      <CustomInput
+        label="Template"
+        value={template}
+        onChange={setTemplate}
+        placeholder="Enter template"
       />
       <Dropdown
         label="Options"
@@ -98,14 +115,16 @@ Programmatically add code syntax to Figma variables in bulk, eliminating manual 
 **Directory:** [plugins/code-syntax-generator](plugins/code-syntax-generator/)
 
 **Features:**
-- Bulk apply code syntax to all variables in a collection
-- Support for multiple platforms (WEB, iOS, ANDROID)
-- Customizable naming conventions (camelCase, snake_case, kebab-case, PascalCase)
-- Optional prefix support with normalization (handles multi-word prefixes)
-- Compound variable name normalization (e.g., "colorPrimary500" → "colorPrimary_500")
-- Dark mode support with automatic theme detection
-- Built with shared UI components for consistent design
-- About modal with plugin information and support link
+- **Template System** - Define custom code syntax with prefix + {token} + suffix pattern
+- **Per-Platform Configuration** - Independent templates and conventions for WEB, iOS, and ANDROID
+- **Platform Tabs** - Easy switching between platform configurations with visual states
+- **Live Preview Panel** - See generated code syntax before applying (default 10 variables, expandable to all)
+- **Naming Conventions** - camelCase, snake_case, kebab-case, PascalCase
+- **Remove Mode** - Dedicated workflow to remove code syntax from variables
+- **LocalStorage Persistence** - Templates automatically saved per collection and platform
+- **Two-Panel Layout** - Intuitive interface with configuration (left) and preview (right)
+- **Dark Mode Support** - Automatic theme detection using Figma CSS variables
+- **About Modal** - Plugin information and support link
 
 **Installation:**
 
