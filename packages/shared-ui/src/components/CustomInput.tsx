@@ -78,7 +78,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({
     padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
     fontSize: theme.typography.fontSize.md,
     fontFamily: theme.typography.fontFamily.default,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textTertiary,
     lineHeight: '22px',
     pointerEvents: 'none',
     whiteSpace: 'nowrap',

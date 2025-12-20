@@ -64,10 +64,10 @@ figma.ui.onmessage = async (msg) => {
   }
 
   if (msg.type === 'generate-preview') {
-    const { collectionId, platform, convention, prefix, suffix, limit = 20 } = msg;
+    const { collectionId, platform, convention, prefix, suffix, omitParents = false, limit = 20 } = msg;
 
     try {
-      const preview = await generatePreview(collectionId, platform, convention, prefix, suffix, limit);
+      const preview = await generatePreview(collectionId, platform, convention, prefix, suffix, omitParents, limit);
 
       // Get total count
       const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
@@ -89,7 +89,7 @@ figma.ui.onmessage = async (msg) => {
   }
 
   if (msg.type === 'apply-code-syntax') {
-    const { collectionId, platforms, conventions, prefixes, suffixes } = msg;
+    const { collectionId, platforms, conventions, prefixes, suffixes, omitParents } = msg;
 
     // Get the selected collection
     const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
@@ -108,7 +108,7 @@ figma.ui.onmessage = async (msg) => {
     let updated = 0;
     for (const variable of variables) {
       if (variable) {
-        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefixes, suffixes);
+        const codeSyntax = buildCodeSyntax(variable, platforms, conventions, prefixes, suffixes, omitParents);
 
         // Set code syntax for each selected platform
         for (const platform of platforms) {
@@ -185,6 +185,7 @@ async function generatePreview(
   convention: string,
   prefix: string,
   suffix: string,
+  omitParents: boolean = false,
   limit: number = 20
 ): Promise<Array<{ original: string; generated: string }>> {
   const collection = await figma.variables.getVariableCollectionByIdAsync(collectionId);
@@ -199,15 +200,20 @@ async function generatePreview(
 
   const previewLimit = Math.min(limit, variables.length);
 
-  return variables.slice(0, previewLimit).map(variable => ({
-    original: variable!.name,
-    generated: formatPath(
-      variable!.name.split('/'),
-      convention,
-      prefix,
-      suffix
-    )
-  }));
+  return variables.slice(0, previewLimit).map(variable => {
+    const path = variable!.name.split('/');
+    const pathToUse = omitParents ? [path[path.length - 1]] : path;
+
+    return {
+      original: variable!.name,
+      generated: formatPath(
+        pathToUse,
+        convention,
+        prefix,
+        suffix
+      )
+    };
+  });
 }
 
 /**
@@ -218,7 +224,8 @@ function buildCodeSyntax(
   platforms: string[],
   conventions: Record<string, string>,
   prefixes: Record<string, string>,
-  suffixes: Record<string, string>
+  suffixes: Record<string, string>,
+  omitParents: Record<string, boolean> = {}
 ): Record<string, string> {
   // Parse variable path from hierarchical name
   // Figma variables use "/" as separator: "background/primary/default"
@@ -230,7 +237,10 @@ function buildCodeSyntax(
     const convention = conventions[platform];
     const prefix = prefixes[platform];
     const suffix = suffixes[platform];
-    syntax[platform] = formatPath(path, convention, prefix, suffix);
+    const shouldOmitParents = omitParents[platform] || false;
+
+    const pathToUse = shouldOmitParents ? [path[path.length - 1]] : path;
+    syntax[platform] = formatPath(pathToUse, convention, prefix, suffix);
   }
 
   return syntax;

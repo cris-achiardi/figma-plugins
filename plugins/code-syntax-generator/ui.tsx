@@ -53,6 +53,12 @@ function App() {
     ANDROID: ''
   });
 
+  const [omitParents, setOmitParents] = React.useState<Record<Platform, boolean>>({
+    WEB: false,
+    iOS: false,
+    ANDROID: false
+  });
+
   // Preview states (per platform)
   const [previews, setPreviews] = React.useState<Record<Platform, PreviewItem[]>>({
     WEB: [],
@@ -251,6 +257,7 @@ function App() {
         convention: conventions[activeTab],
         prefix: templatePrefixes[activeTab],
         suffix: templateSuffixes[activeTab],
+        omitParents: omitParents[activeTab],
         limit
       }
     }, '*');
@@ -274,6 +281,7 @@ function App() {
           convention: conventions[activeTab],
           prefix: templatePrefixes[activeTab],
           suffix: templateSuffixes[activeTab],
+          omitParents: omitParents[activeTab],
           limit: 1000
         }
       }, '*');
@@ -305,7 +313,8 @@ function App() {
         platforms: enabledPlatforms,
         conventions,
         prefixes: templatePrefixes,
-        suffixes: templateSuffixes
+        suffixes: templateSuffixes,
+        omitParents
       }
     }, '*');
 
@@ -658,6 +667,16 @@ function App() {
               </div>
             </div>
 
+            {/* Omit Parents Checkbox */}
+            <Checkbox
+              checked={omitParents[activeTab]}
+              onChange={e => setOmitParents(prev => ({
+                ...prev,
+                [activeTab]: e.target.checked
+              }))}
+              label="Omit parents (use only token name)"
+            />
+
             {/* Preview Panel */}
             <div>
               <div style={{
@@ -691,7 +710,7 @@ function App() {
                 border: `1px solid ${theme.colors.border}`,
                 borderRadius: theme.borderRadius.md,
                 padding: theme.spacing.md,
-                height: '300px',
+                height: '250px',
                 overflowY: 'auto',
                 backgroundColor: theme.colors.bgSecondary,
                 fontFamily: theme.typography.fontFamily.mono,

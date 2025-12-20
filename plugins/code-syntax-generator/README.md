@@ -11,6 +11,13 @@ This Figma plugin allows you to bulk apply code syntax to all variables in a col
 
 ## Features
 
+### v2.1 - Omit Parents Feature
+- **Omit Parents Option** - Use only the token name without parent path segments
+  - Example: `spacing/10` → `10` (instead of `spacing-10`)
+  - Per-platform setting for maximum flexibility
+  - Perfect for TypeScript token objects where parent structure is already defined in code
+- **Improved Placeholder Visibility** - Darker placeholder text for better readability
+
 ### v2.0 - Template System
 - **Template System** - Define custom code syntax with prefix + `{token}` + suffix pattern
   - Example: `tokens.` + `{token}` → `tokens.colorPrimary500`
@@ -156,7 +163,7 @@ If you find this plugin helpful, consider [supporting the developer](https://buy
 
 ## Version
 
-Current version: 2.0.0
+Current version: 2.1.0
 
 ## License
 
