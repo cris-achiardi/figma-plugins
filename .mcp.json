@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "figma-plugin-typings": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "figma-plugin-typings-mcp"
+      ],
+      "env": {}
+    }
+  }
+}
