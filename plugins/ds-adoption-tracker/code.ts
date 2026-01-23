@@ -1,7 +1,7 @@
 import { Scope, ComponentStats, DetachedInstance, AnalysisResult, UIMessage, CodeMessage } from './types';
 
 // Show UI
-figma.showUI(__html__, { width: 560, height: 420 });
+figma.showUI(__html__, { width: 600, height: 500 });
 
 // Skip invisible children for better performance
 figma.skipInvisibleInstanceChildren = true;
@@ -218,8 +218,8 @@ async function analyze(scope: Scope) {
 }
 
 // Navigate to a node
-function navigateToNode(nodeId: string) {
-  const node = figma.getNodeById(nodeId) as SceneNode;
+async function navigateToNode(nodeId: string) {
+  const node = await figma.getNodeByIdAsync(nodeId) as SceneNode;
   if (node) {
     figma.currentPage.selection = [node];
     figma.viewport.scrollAndZoomIntoView([node]);

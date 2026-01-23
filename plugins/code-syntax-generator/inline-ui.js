@@ -7,51 +7,23 @@ const htmlTemplate = `<!DOCTYPE html>
   <meta charset="utf-8">
   <style>
     * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      background-color: var(--figma-color-bg, #ffffff);
+    }
     body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       font-size: 12px;
-      padding: 16px;
-      margin: 0;
-      color: #000;
+      background-color: var(--figma-color-bg, #ffffff);
+      color: var(--figma-color-text, #333333);
     }
-    h2 { font-size: 14px; font-weight: 600; margin: 0 0 16px 0; }
-    label { display: block; margin-bottom: 12px; font-weight: 500; }
-    select, input {
-      width: 100%;
-      padding: 6px 8px;
-      margin-top: 4px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 12px;
+    #root {
+      height: 100%;
+      background-color: var(--figma-color-bg, #ffffff);
     }
-    fieldset {
-      border: 1px solid #e0e0e0;
-      border-radius: 4px;
-      padding: 12px;
-      margin-bottom: 12px;
-    }
-    legend { font-weight: 600; padding: 0 4px; }
-    .platform-option { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .platform-option input[type="checkbox"] { width: auto; margin: 0; }
-    .platform-option select { flex: 1; margin: 0; }
-    button {
-      width: 100%;
-      padding: 8px 16px;
-      background: #18A0FB;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-    button:hover { background: #0D8FE8; }
-    button:disabled { background: #ccc; cursor: not-allowed; }
-    .status { margin-top: 12px; padding: 8px; border-radius: 4px; font-size: 11px; }
-    .status.success { background: #E7F5EC; color: #0D612B; }
-    .status.processing { background: #E7F1FF; color: #0D5FBF; }
-    .status.error { background: #FFE7E7; color: #BF0D0D; }
   </style>
 </head>
 <body>

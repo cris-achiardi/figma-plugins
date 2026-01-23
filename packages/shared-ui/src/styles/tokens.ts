@@ -29,23 +29,23 @@ export const colors = {
   purple: '#7B61FF',
   hotPink: '#FF00FF',
 
-  // Text (Figma CSS Variables)
-  textPrimary: 'var(--figma-color-text, #FFFFFF)',
-  textSecondary: 'var(--figma-color-text-secondary, #B3B3B3)',
+  // Text (Figma CSS Variables) - light mode fallbacks
+  textPrimary: 'var(--figma-color-text, #333333)',
+  textSecondary: 'var(--figma-color-text-secondary, #666666)',
   textTertiary: 'var(--figma-color-text-tertiary, #808080)',
-  textOnPrimary: 'var(--figma-color-text-onbrand, #000000)',
+  textOnPrimary: 'var(--figma-color-text-onbrand, #FFFFFF)',
 
-  // Background (Figma CSS Variables)
-  bgPrimary: 'var(--figma-color-bg-secondary, #2C2C2C)',
-  bgSecondary: 'var(--figma-color-bg, #1E1E1E)',
-  bgTertiary: 'var(--figma-color-bg-tertiary, #252525)',
-  bgHover: 'var(--figma-color-bg-hover, #373737)',
-  bgSelected: 'var(--figma-color-bg-selected, #2D5A7B)',
+  // Background (Figma CSS Variables) - light mode fallbacks
+  bgPrimary: 'var(--figma-color-bg-secondary, #F5F5F5)',
+  bgSecondary: 'var(--figma-color-bg, #FFFFFF)',
+  bgTertiary: 'var(--figma-color-bg-tertiary, #FAFAFA)',
+  bgHover: 'var(--figma-color-bg-hover, #F0F0F0)',
+  bgSelected: 'var(--figma-color-bg-selected, #E3F2FD)',
   bgBrandHover: 'var(--figma-color-bg-brand-hover, #0C8CE9)',
 
-  // Border (Figma CSS Variables)
-  border: 'var(--figma-color-border, #3D3D3D)',
-  borderStrong: 'var(--figma-color-border-strong, #5A5A5A)',
+  // Border (Figma CSS Variables) - light mode fallbacks
+  border: 'var(--figma-color-border, #E5E5E5)',
+  borderStrong: 'var(--figma-color-border-strong, #CCCCCC)',
   borderFocus: 'var(--figma-color-border-selected, #18A0FB)',
 } as const;
 

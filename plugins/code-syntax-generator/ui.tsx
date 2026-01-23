@@ -635,8 +635,8 @@ function App() {
                 </div>
                 <div style={{
                   padding: '6px 12px',
-                  backgroundColor: '#1E1E1E',
-                  borderRadius: '4px',
+                  backgroundColor: theme.colors.gray800,
+                  borderRadius: theme.borderRadius.md,
                   fontSize: theme.typography.fontSize.md,
                   color: theme.colors.white,
                   fontWeight: theme.typography.fontWeight.semibold,

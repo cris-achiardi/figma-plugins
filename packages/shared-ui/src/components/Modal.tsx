@@ -47,7 +47,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const modalStyle: CSSProperties = {
-    backgroundColor: 'var(--figma-color-bg)',
+    backgroundColor: theme.colors.bgSecondary,
     borderRadius: '12px',
     width: '100%',
     maxWidth: width,

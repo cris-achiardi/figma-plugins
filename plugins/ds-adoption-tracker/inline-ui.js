@@ -7,12 +7,22 @@ const htmlTemplate = `<!DOCTYPE html>
   <meta charset="utf-8">
   <style>
     * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      background-color: var(--figma-color-bg, #ffffff);
+    }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 12px;
+      height: 100%;
       margin: 0;
       padding: 0;
-      color: #000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 12px;
+      background-color: var(--figma-color-bg, #ffffff);
+      color: var(--figma-color-text, #333333);
+    }
+    #root {
+      height: 100%;
+      background-color: var(--figma-color-bg, #ffffff);
     }
   </style>
 </head>

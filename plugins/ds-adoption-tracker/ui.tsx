@@ -12,14 +12,14 @@ type ActiveTab = 'instances' | 'detached';
 function StatCard({ value, label, sublabel }: { value: string | number; label: string; sublabel?: string }) {
   return (
     <div style={{
-      backgroundColor: theme.colors.bgSecondary,
+      backgroundColor: 'var(--figma-color-bg-secondary, rgba(0,0,0,0.05))',
       borderRadius: theme.borderRadius.md,
       padding: theme.spacing.md,
       textAlign: 'center',
       border: `1px solid ${theme.colors.border}`,
     }}>
       <div style={{
-        fontSize: '20px',
+        fontSize: theme.typography.fontSize.xl,
         fontWeight: theme.typography.fontWeight.bold,
         color: theme.colors.textPrimary,
       }}>
@@ -34,9 +34,9 @@ function StatCard({ value, label, sublabel }: { value: string | number; label: s
       </div>
       {sublabel && (
         <div style={{
-          fontSize: '10px',
+          fontSize: theme.typography.fontSize.xs,
           color: theme.colors.textTertiary,
-          marginTop: '2px',
+          marginTop: theme.spacing.xxs,
         }}>
           {sublabel}
         </div>
@@ -72,7 +72,7 @@ function ComponentRow({ component, onNavigate, allComponents }: {
     }}>
       <div style={{
         backgroundColor: theme.colors.blue,
-        color: 'white',
+        color: theme.colors.white,
         borderRadius: theme.borderRadius.md,
         padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
         fontSize: theme.typography.fontSize.sm,
@@ -96,24 +96,24 @@ function ComponentRow({ component, onNavigate, allComponents }: {
         <div style={{
           fontSize: theme.typography.fontSize.xs,
           color: theme.colors.textSecondary,
-          marginTop: '2px',
+          marginTop: theme.spacing.xxs,
         }}>
           {component.libraryName || (component.isExternal ? 'External' : 'Local')}
         </div>
         {usedInNames.length > 0 && (
           <div style={{
-            fontSize: '10px',
+            fontSize: theme.typography.fontSize.xs,
             color: theme.colors.textTertiary,
-            marginTop: '4px',
+            marginTop: theme.spacing.xs,
           }}>
             in: {usedInNames.join(', ')}{component.usedInComponents.length > 3 ? '...' : ''}
           </div>
         )}
         {nestedNames.length > 0 && (
           <div style={{
-            fontSize: '10px',
+            fontSize: theme.typography.fontSize.xs,
             color: theme.colors.textTertiary,
-            marginTop: '2px',
+            marginTop: theme.spacing.xxs,
           }}>
             has: {nestedNames.join(', ')}{component.nestedComponents.length > 3 ? '...' : ''}
           </div>
@@ -166,7 +166,7 @@ function DetachedRow({ item, onNavigate }: {
         <div style={{
           fontSize: theme.typography.fontSize.xs,
           color: theme.colors.textSecondary,
-          marginTop: '4px',
+          marginTop: theme.spacing.xs,
         }}>
           ↳ Was: {item.originalComponentName || item.originalComponentKey || 'Unknown'}
         </div>
@@ -203,7 +203,7 @@ function ProgressBar({ percent, message }: { percent: number; message: string })
       <div style={{
         width: '200px',
         height: '8px',
-        backgroundColor: theme.colors.bgSecondary,
+        backgroundColor: 'var(--figma-color-bg-secondary, rgba(0,0,0,0.1))',
         borderRadius: theme.borderRadius.full,
         overflow: 'hidden',
       }}>
@@ -418,8 +418,8 @@ function App() {
   ];
 
   const tabItems = [
-    { id: 'instances', label: 'Instances' },
-    { id: 'detached', label: 'Detached' },
+    { value: 'instances', label: 'Instances' },
+    { value: 'detached', label: 'Detached' },
   ];
 
   return (
@@ -567,9 +567,9 @@ function App() {
         {/* Tabs */}
         <div style={{ padding: `${theme.spacing.md} ${theme.spacing.lg} 0` }}>
           <Tabs
-            items={tabItems}
+            tabs={tabItems}
             activeTab={activeTab}
-            onTabChange={(id) => setActiveTab(id as ActiveTab)}
+            onChange={(value) => setActiveTab(value as ActiveTab)}
           />
         </div>
 
@@ -592,7 +592,7 @@ function App() {
               color: theme.colors.textSecondary,
               gap: theme.spacing.md,
             }}>
-              <div style={{ fontSize: '32px' }}>📊</div>
+              <div style={{ fontSize: theme.spacing.xxl }}>📊</div>
               <div style={{ fontSize: theme.typography.fontSize.sm, textAlign: 'center' }}>
                 Select a scope and click<br />Analyze to get started
               </div>
