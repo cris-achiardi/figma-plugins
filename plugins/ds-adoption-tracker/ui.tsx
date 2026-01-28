@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Button, Dropdown, Input, Checkbox, Tabs, Modal, theme } from '@figma-plugins/shared-ui';
-import { Scope, ExportFormat, AnalysisResult, UIMessage, CodeMessage, ComponentStats, DetachedInstance } from './types';
+import { Scope, ExportFormat, AnalysisResult, UIMessage, CodeMessage, ComponentStats, DetachedInstance, ComponentGroup } from './types';
 
 const PLUGIN_VERSION = '1.0.0';
 
@@ -45,24 +45,33 @@ function StatCard({ value, label, sublabel }: { value: string | number; label: s
   );
 }
 
-// Component Row
-function ComponentRow({ component, onNavigate, allComponents }: {
+// Navigation button style (shared)
+const navButtonStyle: React.CSSProperties = {
+  background: 'none',
+  border: `1px solid ${theme.colors.border}`,
+  cursor: 'pointer',
+  padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+  color: theme.colors.textSecondary,
+  borderRadius: theme.borderRadius.sm,
+  fontSize: theme.typography.fontSize.xs,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: '28px',
+};
+
+// Variant Row (nested under ComponentGroupRow)
+function VariantRow({ component, onNavigate }: {
   component: ComponentStats;
   onNavigate: (nodeId: string) => void;
-  allComponents: ComponentStats[];
 }) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
-  // Get names of parent/nested components
-  const usedInNames = component.usedInComponents
-    .map(id => allComponents.find(c => c.id === id)?.name?.split('/').pop())
-    .filter(Boolean)
-    .slice(0, 3);
-
-  const nestedNames = component.nestedComponents
-    .map(id => allComponents.find(c => c.id === id)?.name?.split('/').pop())
-    .filter(Boolean)
-    .slice(0, 3);
+  // Get variant name (part after " / ")
+  const separatorIndex = component.name.indexOf(' / ');
+  const variantName = separatorIndex !== -1
+    ? component.name.substring(separatorIndex + 3)
+    : component.name;
 
   const handlePrev = () => {
     const newIndex = currentIndex > 0 ? currentIndex - 1 : component.instanceIds.length - 1;
@@ -76,76 +85,38 @@ function ComponentRow({ component, onNavigate, allComponents }: {
     onNavigate(component.instanceIds[newIndex]);
   };
 
-  const navButtonStyle: React.CSSProperties = {
-    background: 'none',
-    border: `1px solid ${theme.colors.border}`,
-    cursor: 'pointer',
-    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-    color: theme.colors.textSecondary,
-    borderRadius: theme.borderRadius.sm,
-    fontSize: theme.typography.fontSize.xs,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '28px',
-  };
-
   return (
     <div style={{
       display: 'flex',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: theme.spacing.md,
-      padding: theme.spacing.md,
+      padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+      paddingLeft: '56px', // Indent for nesting
       borderBottom: `1px solid ${theme.colors.border}`,
+      backgroundColor: theme.colors.bgPrimary,
     }}>
       <div style={{
-        backgroundColor: theme.colors.blue,
-        color: theme.colors.white,
-        borderRadius: theme.borderRadius.md,
-        padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-        fontSize: theme.typography.fontSize.sm,
-        fontWeight: theme.typography.fontWeight.bold,
-        minWidth: '40px',
+        backgroundColor: theme.colors.bgHover,
+        color: theme.colors.textSecondary,
+        borderRadius: theme.borderRadius.sm,
+        padding: `${theme.spacing.xxs} ${theme.spacing.xs}`,
+        fontSize: theme.typography.fontSize.xs,
+        fontWeight: theme.typography.fontWeight.medium,
+        minWidth: '32px',
         textAlign: 'center',
       }}>
         {component.instanceCount}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: theme.typography.fontSize.sm,
-          fontWeight: theme.typography.fontWeight.medium,
-          color: theme.colors.textPrimary,
+          fontSize: theme.typography.fontSize.xs,
+          color: theme.colors.textSecondary,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         }}>
-          {component.name}
+          {variantName}
         </div>
-        <div style={{
-          fontSize: theme.typography.fontSize.xs,
-          color: theme.colors.textSecondary,
-          marginTop: theme.spacing.xxs,
-        }}>
-          {component.libraryName || (component.isExternal ? 'External' : 'Local')}
-        </div>
-        {usedInNames.length > 0 && (
-          <div style={{
-            fontSize: theme.typography.fontSize.xs,
-            color: theme.colors.textTertiary,
-            marginTop: theme.spacing.xs,
-          }}>
-            in: {usedInNames.join(', ')}{component.usedInComponents.length > 3 ? '...' : ''}
-          </div>
-        )}
-        {nestedNames.length > 0 && (
-          <div style={{
-            fontSize: theme.typography.fontSize.xs,
-            color: theme.colors.textTertiary,
-            marginTop: theme.spacing.xxs,
-          }}>
-            has: {nestedNames.join(', ')}{component.nestedComponents.length > 3 ? '...' : ''}
-          </div>
-        )}
       </div>
       {component.instanceIds.length > 0 && (
         <div style={{
@@ -182,6 +153,161 @@ function ComponentRow({ component, onNavigate, allComponents }: {
         </div>
       )}
     </div>
+  );
+}
+
+// Component Group Row (main row for grouped components)
+function ComponentGroupRow({ group, onNavigate, isExpanded, onToggleExpand }: {
+  group: ComponentGroup;
+  onNavigate: (nodeId: string) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}) {
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const hasVariants = group.variants.length > 1;
+
+  const handlePrev = () => {
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : group.allInstanceIds.length - 1;
+    setCurrentIndex(newIndex);
+    onNavigate(group.allInstanceIds[newIndex]);
+  };
+
+  const handleNext = () => {
+    const newIndex = currentIndex < group.allInstanceIds.length - 1 ? currentIndex + 1 : 0;
+    setCurrentIndex(newIndex);
+    onNavigate(group.allInstanceIds[newIndex]);
+  };
+
+  return (
+    <>
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: theme.spacing.md,
+        padding: theme.spacing.md,
+        borderBottom: `1px solid ${theme.colors.border}`,
+        cursor: hasVariants ? 'pointer' : 'default',
+      }}
+      onClick={hasVariants ? onToggleExpand : undefined}
+      >
+        {/* Expand/Collapse Arrow */}
+        <div style={{
+          width: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: theme.colors.textTertiary,
+          flexShrink: 0,
+          marginTop: '2px',
+        }}>
+          {hasVariants && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 12 12"
+              fill="none"
+              style={{
+                transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: `transform ${theme.transitions.fast}`,
+              }}
+            >
+              <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+
+        {/* Instance Count Badge */}
+        <div style={{
+          backgroundColor: theme.colors.blue,
+          color: theme.colors.white,
+          borderRadius: theme.borderRadius.md,
+          padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+          fontSize: theme.typography.fontSize.sm,
+          fontWeight: theme.typography.fontWeight.bold,
+          minWidth: '40px',
+          textAlign: 'center',
+        }}>
+          {group.totalInstances}
+        </div>
+
+        {/* Component Info */}
+        <div style={{ flex: 1, minWidth: 0 }} onClick={(e) => hasVariants && e.stopPropagation()}>
+          <div style={{
+            fontSize: theme.typography.fontSize.sm,
+            fontWeight: theme.typography.fontWeight.medium,
+            color: theme.colors.textPrimary,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {group.baseName}
+          </div>
+          <div style={{
+            fontSize: theme.typography.fontSize.xs,
+            color: theme.colors.textSecondary,
+            marginTop: theme.spacing.xxs,
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.sm,
+          }}>
+            <span>{group.libraryName || (group.isExternal ? 'External' : 'Local')}</span>
+            {hasVariants && (
+              <span style={{ color: theme.colors.textTertiary }}>
+                {group.variants.length} variant{group.variants.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Controls */}
+        {group.allInstanceIds.length > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing.xs,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={handlePrev}
+              style={navButtonStyle}
+              title="Previous instance"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <span style={{
+              fontSize: theme.typography.fontSize.xs,
+              color: theme.colors.textTertiary,
+              minWidth: '40px',
+              textAlign: 'center',
+            }}>
+              {currentIndex + 1}/{group.allInstanceIds.length}
+            </span>
+            <button
+              onClick={handleNext}
+              style={navButtonStyle}
+              title="Next instance"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Expanded Variants */}
+      {isExpanded && hasVariants && group.variants.map((variant) => (
+        <VariantRow
+          key={variant.id}
+          component={variant}
+          onNavigate={onNavigate}
+        />
+      ))}
+    </>
   );
 }
 
@@ -290,6 +416,7 @@ function App() {
   const [sortBy, setSortBy] = React.useState<SortBy>('count');
   const [externalOnly, setExternalOnly] = React.useState(false);
   const [isAboutModalOpen, setIsAboutModalOpen] = React.useState(false);
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
 
   // Message handler
   React.useEffect(() => {
@@ -338,13 +465,42 @@ function App() {
   const handleExport = (format: ExportFormat) => {
     if (!result) return;
 
-    // Compact component data (id, name, instanceCount, isExternal)
-    const compactComponents = result.components.map(c => ({
-      id: c.id,
-      name: c.name,
-      instanceCount: c.instanceCount,
-      isExternal: c.isExternal,
-    }));
+    // Group all components (not just filtered) for export
+    const groupMap = new Map<string, ComponentStats[]>();
+    for (const comp of result.components) {
+      const separatorIndex = comp.name.indexOf(' / ');
+      const baseName = separatorIndex !== -1
+        ? comp.name.substring(0, separatorIndex)
+        : comp.name;
+
+      const existing = groupMap.get(baseName);
+      if (existing) {
+        existing.push(comp);
+      } else {
+        groupMap.set(baseName, [comp]);
+      }
+    }
+
+    // Build grouped export data
+    const exportGroups = Array.from(groupMap.entries()).map(([baseName, variants]) => {
+      variants.sort((a, b) => b.instanceCount - a.instanceCount);
+      const totalInstances = variants.reduce((sum, v) => sum + v.instanceCount, 0);
+      const isExternal = variants.some(v => v.isExternal);
+      const libraryName = variants.find(v => v.isExternal)?.libraryName || variants[0]?.libraryName || null;
+
+      return {
+        name: baseName,
+        totalInstances,
+        variantCount: variants.length,
+        fromLibrary: isExternal,
+        libraryName,
+        variants: variants.map(v => ({
+          name: v.name,
+          instanceCount: v.instanceCount,
+          fromLibrary: v.isExternal,
+        })),
+      };
+    }).sort((a, b) => b.totalInstances - a.totalInstances);
 
     if (format === 'json') {
       const data = {
@@ -357,12 +513,13 @@ function App() {
         },
         summary: {
           totalInstances: result.totalInstances,
-          uniqueComponents: result.uniqueComponents,
-          externalComponents: result.externalComponents,
-          localComponents: result.localComponents,
+          components: exportGroups.length,
+          totalVariants: result.uniqueComponents,
+          fromLibraries: exportGroups.filter(g => g.fromLibrary).length,
+          localComponents: exportGroups.filter(g => !g.fromLibrary).length,
           detachedInstances: result.totalDetached,
         },
-        components: compactComponents,
+        components: exportGroups,
       };
 
       downloadFile(
@@ -371,11 +528,11 @@ function App() {
         'application/json'
       );
     } else {
-      // CSV export - single file with components
+      // CSV export - grouped format
       const csv = [
-        'id,name,instanceCount,isExternal',
-        ...compactComponents.map(c =>
-          `"${c.id}","${c.name}",${c.instanceCount},${c.isExternal}`
+        'name,totalInstances,variantCount,fromLibrary,libraryName,variants',
+        ...exportGroups.map(g =>
+          `"${g.name}",${g.totalInstances},${g.variantCount},${g.fromLibrary},"${g.libraryName || ''}","${g.variants.map(v => `${v.name}(${v.instanceCount})`).join('; ')}"`
         )
       ].join('\n');
 
@@ -435,6 +592,78 @@ function App() {
 
     return filtered;
   }, [result, searchQuery, sortBy, externalOnly]);
+
+  // Group components by base name (before " / ")
+  const groupedComponents = React.useMemo((): ComponentGroup[] => {
+    if (filteredComponents.length === 0) return [];
+
+    const groupMap = new Map<string, ComponentStats[]>();
+
+    // Group by base name (split on first " / ")
+    for (const comp of filteredComponents) {
+      const separatorIndex = comp.name.indexOf(' / ');
+      const baseName = separatorIndex !== -1
+        ? comp.name.substring(0, separatorIndex)
+        : comp.name;
+
+      const existing = groupMap.get(baseName);
+      if (existing) {
+        existing.push(comp);
+      } else {
+        groupMap.set(baseName, [comp]);
+      }
+    }
+
+    // Convert to ComponentGroup array
+    const groups: ComponentGroup[] = [];
+    for (const [baseName, variants] of groupMap.entries()) {
+      // Sort variants by instance count
+      variants.sort((a, b) => b.instanceCount - a.instanceCount);
+
+      const totalInstances = variants.reduce((sum, v) => sum + v.instanceCount, 0);
+      const allInstanceIds = variants.flatMap(v => v.instanceIds);
+      const isExternal = variants.some(v => v.isExternal);
+      const libraryName = variants.find(v => v.isExternal)?.libraryName || variants[0]?.libraryName || null;
+
+      groups.push({
+        baseName,
+        totalInstances,
+        variants,
+        isExternal,
+        allInstanceIds,
+        libraryName,
+      });
+    }
+
+    // Sort groups
+    groups.sort((a, b) => {
+      switch (sortBy) {
+        case 'count':
+          return b.totalInstances - a.totalInstances;
+        case 'name':
+          return a.baseName.localeCompare(b.baseName);
+        case 'library':
+          return (a.libraryName || '').localeCompare(b.libraryName || '');
+        default:
+          return 0;
+      }
+    });
+
+    return groups;
+  }, [filteredComponents, sortBy]);
+
+  // Toggle group expansion
+  const toggleGroupExpand = (baseName: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(baseName)) {
+        newSet.delete(baseName);
+      } else {
+        newSet.add(baseName);
+      }
+      return newSet;
+    });
+  };
 
   // Scope options
   const scopeOptions = [
@@ -519,15 +748,17 @@ function App() {
           }}>
             <StatCard
               value={result?.totalInstances ?? '—'}
-              label="Uses"
+              label="Instances"
             />
             <StatCard
-              value={result?.uniqueComponents ?? '—'}
-              label="Comps"
+              value={groupedComponents.length > 0 ? groupedComponents.length : (result ? '0' : '—')}
+              label="Components"
+              sublabel={result ? `${result.uniqueComponents} variants` : undefined}
             />
             <StatCard
-              value={result?.externalComponents ?? '—'}
-              label="Library"
+              value={groupedComponents.length > 0 ? groupedComponents.filter(g => g.isExternal).length : (result ? '0' : '—')}
+              label="From libraries"
+              sublabel={result ? `${groupedComponents.filter(g => g.isExternal).reduce((sum, g) => sum + g.variants.length, 0)} variants` : undefined}
             />
             <StatCard
               value={result?.totalDetached ?? '—'}
@@ -576,7 +807,7 @@ function App() {
         <Checkbox
           checked={externalOnly}
           onChange={(e) => setExternalOnly(e.target.checked)}
-          label="External only"
+          label="Only from libraries"
         />
       </div>
 
@@ -658,7 +889,7 @@ function App() {
                 overflowY: 'auto',
                 borderTop: `1px solid ${theme.colors.border}`,
               }}>
-                {filteredComponents.length === 0 ? (
+                {groupedComponents.length === 0 ? (
                   <div style={{
                     padding: theme.spacing.lg,
                     textAlign: 'center',
@@ -667,12 +898,13 @@ function App() {
                     No components found
                   </div>
                 ) : (
-                  filteredComponents.map((component) => (
-                    <ComponentRow
-                      key={component.id}
-                      component={component}
+                  groupedComponents.map((group) => (
+                    <ComponentGroupRow
+                      key={group.baseName}
+                      group={group}
                       onNavigate={handleNavigate}
-                      allComponents={result.components}
+                      isExpanded={expandedGroups.has(group.baseName)}
+                      onToggleExpand={() => toggleGroupExpand(group.baseName)}
                     />
                   ))
                 )}

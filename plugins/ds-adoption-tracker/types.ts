@@ -18,6 +18,16 @@ export interface ComponentStats {
   nestedComponents: string[];   // Child component IDs used within this
 }
 
+// Grouped component (variants grouped by base name)
+export interface ComponentGroup {
+  baseName: string;           // "Button" (part before " / ")
+  totalInstances: number;     // Sum across all variants
+  variants: ComponentStats[]; // Individual variant data
+  isExternal: boolean;        // True if ANY variant is external
+  allInstanceIds: string[];   // Flattened for navigation
+  libraryName: string | null; // Library name (from first external variant)
+}
+
 // Detached instance info
 export interface DetachedInstance {
   frameId: string;
