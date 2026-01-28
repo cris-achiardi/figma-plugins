@@ -426,6 +426,13 @@ function App() {
 
       switch (msg.type) {
         case 'init':
+          setHasSelection(msg.hasSelection);
+          setSelectionCount(msg.count);
+          // Default to selection scope if there's an existing selection
+          if (msg.hasSelection) {
+            setScope('selection');
+          }
+          break;
         case 'selection-changed':
           setHasSelection(msg.hasSelection);
           setSelectionCount(msg.count);
@@ -669,7 +676,7 @@ function App() {
   const scopeOptions = [
     { value: 'page', label: 'Current Page' },
     { value: 'file', label: 'Current File' },
-    { value: 'selection', label: `Selected Frames (${selectionCount})` },
+    { value: 'selection', label: `Selection (${selectionCount})` },
   ];
 
   const sortOptions = [
