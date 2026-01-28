@@ -311,6 +311,34 @@ Design tokens are defined in [packages/shared-ui/src/styles/tokens.ts](packages/
 - **Shadows** - Box shadows for elevation
 - **Transitions** - Animation timing functions
 
+### DS Adoption Tracker
+
+Measure component adoption across Figma files. Track instances, detect detached components, and export data for reporting and analysis.
+
+**Status:** In Development
+**Directory:** [plugins/ds-adoption-tracker](plugins/ds-adoption-tracker/)
+
+**Features:**
+- **Scope Selection** - Analyze current page, entire file, or selected frames
+- **Variant Grouping** - Components grouped by base name (e.g., "Button / Primary" grouped under "Button")
+- **Instance Navigation** - Click through instances directly in the canvas
+- **Dependency Tracking** - Track nested component relationships for atomic design analysis
+- **Detached Detection** - Identify frames disconnected from their source components
+- **Export** - JSON and CSV formats for dashboards and reporting
+- **Dark Mode Support** - Automatic theme detection using Figma CSS variables
+
+**Development:**
+```bash
+# From root directory
+npm install
+cd plugins/ds-adoption-tracker && npm run build
+```
+
+Then in Figma Desktop:
+1. Go to **Plugins** > **Development** > **Import plugin from manifest**
+2. Select `plugins/ds-adoption-tracker/manifest.json`
+3. Run the plugin from **Plugins** > **Development** > **DS Adoption Tracker**
+
 ## Future Plugins
 
 - Variable type converter

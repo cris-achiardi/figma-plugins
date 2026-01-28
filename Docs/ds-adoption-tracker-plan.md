@@ -161,6 +161,41 @@ function findDetachedInstances(scope: BaseNode): DetachedInfo[] {
 
 ---
 
+## Variant Grouping
+
+Figma assigns unique IDs to each component variant (e.g., "Button / Primary" and "Button / Secondary" have different IDs). This causes inflated component counts in raw analysis.
+
+### Solution
+
+Group components by their base name (the part before " / ") by default:
+
+```
+Button                    [50 instances]
+├── Button / Primary      [40 instances]
+├── Button / Secondary    [8 instances]
+└── Button / Tertiary     [2 instances]
+```
+
+### Implementation
+
+- **Frontend-only** - Grouping logic implemented in `ui.tsx`, backend unchanged
+- **Base name extraction** - Split on first " / " only (handles deep variants like "Button / Primary / Large")
+- **Aggregated counts** - Group shows total instances across all variants
+- **Expand/collapse** - Click to reveal individual variant breakdown
+- **Navigation** - Group-level nav cycles all instances; variant-level nav cycles that variant only
+- **External detection** - Group marked "from library" if ANY variant is external
+
+### UI Labels
+
+| Element | Label |
+|---------|-------|
+| Total instance count | "Instances" |
+| Grouped component count | "Components" (with "X variants" sublabel) |
+| Library components | "From libraries" (with "X variants" sublabel) |
+| Filter checkbox | "Only from libraries" |
+
+---
+
 ## Nested Instance & Dependency Tracking
 
 ### Atomic Design Levels
@@ -694,6 +729,7 @@ For files with 10,000+ nodes:
 | **Nested instances** | ✅ Count separately - enables atomic design level tracking and dependency analysis |
 | **Export formats** | ✅ Both JSON and CSV - JSON for AI/dashboards, CSV for Excel/Sheets |
 | **Historical tracking** | ❌ Not needed - plugin provides raw data snapshot only |
+| **Variant grouping** | ✅ Group by base name (before " / ") - reduces inflated counts from Figma's unique variant IDs |
 
 ---
 

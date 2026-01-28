@@ -5,9 +5,12 @@ A Figma plugin for Design System specialists to measure component adoption acros
 ## Features
 
 - **Instance Counting**: Count component instances by scope (current page, file, or selection)
+- **Variant Grouping**: Components grouped by base name (e.g., "Button / Primary" and "Button / Secondary" grouped under "Button") with expand/collapse to see variant breakdown
+- **Instance Navigation**: Click through component instances directly in the canvas at both group and variant level
 - **Dependency Tracking**: Track nested component relationships for atomic design level analysis
 - **Detached Detection**: Identify frames that were disconnected from their source components
 - **Export**: Export data as JSON or CSV for reporting and analysis
+- **Dark Mode Support**: Automatic theme detection using Figma CSS variables
 
 ## Development
 
@@ -79,17 +82,45 @@ ds-adoption-tracker/
 
 Single file containing:
 - Metadata (plugin version, timestamp, scope)
-- Summary statistics
-- Component list with instance counts
-- Detached instances
+- Summary statistics (instances, components, variants, from libraries, detached)
+- Grouped components with nested variants
 - Dependency graph
+
+```json
+{
+  "summary": {
+    "totalInstances": 847,
+    "components": 15,
+    "totalVariants": 45,
+    "fromLibraries": 12,
+    "localComponents": 3,
+    "detachedInstances": 2
+  },
+  "components": [
+    {
+      "name": "Button",
+      "totalInstances": 50,
+      "variantCount": 3,
+      "fromLibrary": true,
+      "variants": [
+        { "name": "Button / Primary", "instanceCount": 40 },
+        { "name": "Button / Secondary", "instanceCount": 8 },
+        { "name": "Button / Tertiary", "instanceCount": 2 }
+      ]
+    }
+  ]
+}
+```
 
 ### CSV
 
-Three separate files:
-- `*-components.csv`: Component data
-- `*-detached.csv`: Detached instances
-- `*-summary.csv`: Summary metrics
+Single file with grouped component data:
+- `name`: Base component name
+- `totalInstances`: Sum across all variants
+- `variantCount`: Number of variants
+- `fromLibrary`: Whether component is from a library
+- `libraryName`: Source library name
+- `variants`: Semicolon-separated list of variants with counts
 
 ## Tech Stack
 
