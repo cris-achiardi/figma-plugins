@@ -12,7 +12,7 @@ type ActiveTab = 'instances' | 'detached';
 function StatCard({ value, label, sublabel }: { value: string | number; label: string; sublabel?: string }) {
   return (
     <div style={{
-      backgroundColor: 'var(--figma-color-bg-secondary, rgba(0,0,0,0.05))',
+      backgroundColor: theme.colors.bgPrimary,
       borderRadius: theme.borderRadius.md,
       padding: theme.spacing.md,
       textAlign: 'center',
@@ -51,6 +51,8 @@ function ComponentRow({ component, onNavigate, allComponents }: {
   onNavigate: (nodeId: string) => void;
   allComponents: ComponentStats[];
 }) {
+  const [currentIndex, setCurrentIndex] = React.useState(0);
+
   // Get names of parent/nested components
   const usedInNames = component.usedInComponents
     .map(id => allComponents.find(c => c.id === id)?.name?.split('/').pop())
@@ -61,6 +63,32 @@ function ComponentRow({ component, onNavigate, allComponents }: {
     .map(id => allComponents.find(c => c.id === id)?.name?.split('/').pop())
     .filter(Boolean)
     .slice(0, 3);
+
+  const handlePrev = () => {
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : component.instanceIds.length - 1;
+    setCurrentIndex(newIndex);
+    onNavigate(component.instanceIds[newIndex]);
+  };
+
+  const handleNext = () => {
+    const newIndex = currentIndex < component.instanceIds.length - 1 ? currentIndex + 1 : 0;
+    setCurrentIndex(newIndex);
+    onNavigate(component.instanceIds[newIndex]);
+  };
+
+  const navButtonStyle: React.CSSProperties = {
+    background: 'none',
+    border: `1px solid ${theme.colors.border}`,
+    cursor: 'pointer',
+    padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+    color: theme.colors.textSecondary,
+    borderRadius: theme.borderRadius.sm,
+    fontSize: theme.typography.fontSize.xs,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '28px',
+  };
 
   return (
     <div style={{
@@ -120,20 +148,38 @@ function ComponentRow({ component, onNavigate, allComponents }: {
         )}
       </div>
       {component.instanceIds.length > 0 && (
-        <button
-          onClick={() => onNavigate(component.instanceIds[0])}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: theme.spacing.xs,
-            color: theme.colors.textSecondary,
-            borderRadius: theme.borderRadius.sm,
-          }}
-          title="Select first instance"
-        >
-          →
-        </button>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: theme.spacing.xs,
+        }}>
+          <button
+            onClick={handlePrev}
+            style={navButtonStyle}
+            title="Previous instance"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M7.5 9L4.5 6L7.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <span style={{
+            fontSize: theme.typography.fontSize.xs,
+            color: theme.colors.textTertiary,
+            minWidth: '40px',
+            textAlign: 'center',
+          }}>
+            {currentIndex + 1}/{component.instanceIds.length}
+          </span>
+          <button
+            onClick={handleNext}
+            style={navButtonStyle}
+            title="Next instance"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M4.5 3L7.5 6L4.5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );
@@ -203,7 +249,7 @@ function ProgressBar({ percent, message }: { percent: number; message: string })
       <div style={{
         width: '200px',
         height: '8px',
-        backgroundColor: 'var(--figma-color-bg-secondary, rgba(0,0,0,0.1))',
+        backgroundColor: theme.colors.bgPrimary,
         borderRadius: theme.borderRadius.full,
         overflow: 'hidden',
       }}>
@@ -292,6 +338,14 @@ function App() {
   const handleExport = (format: ExportFormat) => {
     if (!result) return;
 
+    // Compact component data (id, name, instanceCount, isExternal)
+    const compactComponents = result.components.map(c => ({
+      id: c.id,
+      name: c.name,
+      instanceCount: c.instanceCount,
+      isExternal: c.isExternal,
+    }));
+
     if (format === 'json') {
       const data = {
         meta: {
@@ -308,9 +362,7 @@ function App() {
           localComponents: result.localComponents,
           detachedInstances: result.totalDetached,
         },
-        components: result.components,
-        detached: result.detachedInstances,
-        dependencies: result.dependencies,
+        components: compactComponents,
       };
 
       downloadFile(
@@ -319,39 +371,19 @@ function App() {
         'application/json'
       );
     } else {
-      // CSV export
-      const componentsCsv = [
-        'id,key,name,library,isExternal,instanceCount,usedInComponents,nestedComponents',
-        ...result.components.map(c =>
-          `"${c.id}","${c.key}","${c.name}","${c.libraryName || ''}",${c.isExternal},${c.instanceCount},"${c.usedInComponents.join(';')}","${c.nestedComponents.join(';')}"`
+      // CSV export - single file with components
+      const csv = [
+        'id,name,instanceCount,isExternal',
+        ...compactComponents.map(c =>
+          `"${c.id}","${c.name}",${c.instanceCount},${c.isExternal}`
         )
       ].join('\n');
 
-      const detachedCsv = [
-        'frameId,frameName,originalComponentKey,originalComponentName',
-        ...result.detachedInstances.map(d =>
-          `"${d.frameId}","${d.frameName}","${d.originalComponentKey}","${d.originalComponentName || ''}"`
-        )
-      ].join('\n');
-
-      const summaryCsv = [
-        'metric,value',
-        `exportedAt,${result.timestamp}`,
-        `scope,${result.scope}`,
-        `fileName,${result.fileName}`,
-        `pageName,${result.pageName}`,
-        `totalInstances,${result.totalInstances}`,
-        `uniqueComponents,${result.uniqueComponents}`,
-        `externalComponents,${result.externalComponents}`,
-        `localComponents,${result.localComponents}`,
-        `detachedInstances,${result.totalDetached}`,
-      ].join('\n');
-
-      // Download each CSV
-      const prefix = `ds-adoption-${result.scope}-${new Date().toISOString().split('T')[0]}`;
-      downloadFile(componentsCsv, `${prefix}-components.csv`, 'text/csv');
-      setTimeout(() => downloadFile(detachedCsv, `${prefix}-detached.csv`, 'text/csv'), 100);
-      setTimeout(() => downloadFile(summaryCsv, `${prefix}-summary.csv`, 'text/csv'), 200);
+      downloadFile(
+        csv,
+        `ds-adoption-${result.scope}-${new Date().toISOString().split('T')[0]}.csv`,
+        'text/csv'
+      );
     }
   };
 
@@ -425,7 +457,8 @@ function App() {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: '200px 1fr',
+      gridTemplateColumns: '300px 1fr',
+      gridTemplateRows: '1fr 40px',
       height: '100%',
       fontFamily: theme.typography.fontFamily.default,
     }}>
@@ -545,17 +578,6 @@ function App() {
           onChange={(e) => setExternalOnly(e.target.checked)}
           label="External only"
         />
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* About */}
-        <Button
-          onClick={() => setIsAboutModalOpen(true)}
-          variant="tertiary"
-        >
-          About
-        </Button>
       </div>
 
       {/* RIGHT PANEL */}
@@ -713,16 +735,54 @@ function App() {
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: theme.spacing.sm,
-          borderTop: `1px solid ${theme.colors.border}`,
+      </div>
+
+      {/* Footer - spans both columns */}
+      <div style={{
+        gridColumn: '1 / -1',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: `0 ${theme.spacing.lg}`,
+        borderTop: `1px solid ${theme.colors.border}`,
+      }}>
+        <span style={{
           fontSize: theme.typography.fontSize.xs,
-          color: theme.colors.textTertiary,
-          textAlign: 'right',
+          color: theme.colors.textSecondary,
         }}>
           v{PLUGIN_VERSION}
-        </div>
+        </span>
+        <button
+          onClick={() => setIsAboutModalOpen(true)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '4px',
+            color: theme.colors.textSecondary,
+            transition: `all ${theme.transitions.fast}`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = theme.colors.bgHover;
+            e.currentTarget.style.color = theme.colors.textPrimary;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = theme.colors.textSecondary;
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1" />
+            <path d="M8 7V11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="8" cy="5" r="0.5" fill="currentColor" />
+          </svg>
+        </button>
       </div>
 
       {/* About Modal */}

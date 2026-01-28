@@ -47,7 +47,7 @@ export const Button: React.FC<ButtonProps> = ({
           ...baseStyles,
           backgroundColor: theme.colors.bgSecondary,
           color: theme.colors.textPrimary,
-          border: `1px solid ${theme.colors.gray650}`,
+          border: `1px solid ${theme.colors.border}`,
         };
       case 'tertiary':
         return {
@@ -78,7 +78,7 @@ export const Button: React.FC<ButtonProps> = ({
     if (variant === 'primary') {
       target.style.backgroundColor = theme.colors.blue;
     } else if (variant === 'secondary') {
-      target.style.backgroundColor = theme.colors.bgPrimary;
+      target.style.backgroundColor = theme.colors.bgSecondary;
     } else if (variant === 'tertiary') {
       target.style.backgroundColor = 'transparent';
     }

@@ -1,12 +1,10 @@
 {
   "name": "DS Adoption Tracker",
-  "id": "1596546550118310217",
+  "id": "1769191068010114173",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
-  "capabilities": [],
-  "enableProposedApi": false,
   "documentAccess": "dynamic-page",
   "networkAccess": {
     "allowedDomains": ["none"]

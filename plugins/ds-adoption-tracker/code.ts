@@ -1,7 +1,7 @@
 import { Scope, ComponentStats, DetachedInstance, AnalysisResult, UIMessage, CodeMessage } from './types';
 
 // Show UI
-figma.showUI(__html__, { width: 600, height: 500 });
+figma.showUI(__html__, { width: 800, height: 600 });
 
 // Skip invisible children for better performance
 figma.skipInvisibleInstanceChildren = true;
@@ -50,6 +50,15 @@ function findParentInstance(node: SceneNode): InstanceNode | null {
     parent = parent.parent;
   }
   return null;
+}
+
+// Get component name (handles variants by getting component set name)
+function getComponentName(component: ComponentNode): string {
+  // If component is part of a component set (variant), use component set name + variant
+  if (component.parent && component.parent.type === 'COMPONENT_SET') {
+    return `${component.parent.name} / ${component.name}`;
+  }
+  return component.name;
 }
 
 // Get instances from scope
@@ -129,7 +138,7 @@ async function analyze(scope: Scope) {
         const existing = statsMap.get(componentId) || {
           id: main.id,
           key: main.key,
-          name: main.name,
+          name: getComponentName(main),
           libraryName: null, // Will be enhanced if we can resolve library
           isExternal: main.remote,
           instanceCount: 0,
