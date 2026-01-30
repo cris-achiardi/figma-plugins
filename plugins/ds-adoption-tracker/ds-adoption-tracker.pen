@@ -588,9 +588,12 @@
                   "ref": "ZoPvR",
                   "width": "fill_container",
                   "name": "analyzeBtn",
+                  "fill": "$--blue",
                   "descendants": {
                     "KsVRc": {
-                      "content": "Analyze"
+                      "content": "Analyze",
+                      "x": 60.5,
+                      "y": 8
                     }
                   }
                 },
