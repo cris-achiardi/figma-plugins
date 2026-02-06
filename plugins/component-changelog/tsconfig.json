@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["ES2017", "DOM"],
+    "jsx": "react",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
+  },
+  "files": ["code.ts", "ui.tsx", "types.ts", "supabase.ts"]
+}

@@ -1,0 +1,26 @@
+{
+  "name": "component-changelog",
+  "version": "0.1.0",
+  "description": "Version-controlled component changelog with Supabase-backed approval pipeline",
+  "main": "code.js",
+  "scripts": {
+    "build": "npm run build:code && npm run build:ui && npm run inline-ui",
+    "build:code": "esbuild code.ts --bundle --outfile=code.js --target=es2017",
+    "build:ui": "esbuild ui.tsx --bundle --outfile=ui.js --target=es2017",
+    "inline-ui": "node inline-ui.js",
+    "watch": "npm run build:code -- --watch & npm run build:ui -- --watch"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.121.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "esbuild": "^0.27.1",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "deep-diff": "^1.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}

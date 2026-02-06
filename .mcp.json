@@ -10,6 +10,10 @@
         "figma-plugin-typings-mcp"
       ],
       "env": {}
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=nwweqcjiklzmlmvbfjkt&access_token=sbp_371a55ad7ee32fd2985fefa065aba74488de37b9"
     }
   }
 }
