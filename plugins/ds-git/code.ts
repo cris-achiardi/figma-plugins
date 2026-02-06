@@ -1,94 +1,223 @@
-// This file holds the main code for plugins. Code in this file has access to
-// the *figma document* via the figma global object.
-// You can access browser APIs in the <script> tag inside "ui.html" which has a
-// full browser environment (See https://www.figma.com/plugin-docs/how-plugins-run).
+import type { UIMessage, CodeMessage, ExtractedComponent } from './types';
 
-// Runs this code if the plugin is run in Figma
-if (figma.editorType === 'figma') {
-  // This plugin will open a window to prompt the user to enter a number, and
-  // it will then create that many rectangles on the screen.
+figma.showUI(__html__, { width: 480, height: 640 });
+figma.skipInvisibleInstanceChildren = true;
 
-  // This shows the HTML page in "ui.html".
-  figma.showUI(__html__);
+// Send init message
+const userName = figma.currentUser?.name || 'unknown';
+const fileKey = figma.fileKey || '';
 
-  // Calls to "parent.postMessage" from within the HTML page will trigger this
-  // callback. The callback will be passed the "pluginMessage" property of the
-  // posted message.
-  figma.ui.onmessage =  (msg: {type: string, count: number}) => {
-    // One way of distinguishing between different types of messages sent from
-    // your HTML page is to use an object with a "type" property like this.
-    if (msg.type === 'create-shapes') {
-      // This plugin creates rectangles on the screen.
-      const numberOfRectangles = msg.count;
-
-      const nodes: SceneNode[] = [];
-      for (let i = 0; i < numberOfRectangles; i++) {
-        const rect = figma.createRectangle();
-        rect.x = i * 150;
-        rect.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-        figma.currentPage.appendChild(rect);
-        nodes.push(rect);
-      }
-      figma.currentPage.selection = nodes;
-      figma.viewport.scrollAndZoomIntoView(nodes);
-    }
-
-    // Make sure to close the plugin when you're done. Otherwise the plugin will
-    // keep running, which shows the cancel button at the bottom of the screen.
-    figma.closePlugin();
-  };
+function sendToUI(msg: CodeMessage) {
+  figma.ui.postMessage(msg);
 }
 
-// Runs this code if the plugin is run in FigJam
-if (figma.editorType === 'figjam') {
-  // This plugin will open a window to prompt the user to enter a number, and
-  // it will then create that many shapes and connectors on the screen.
+function sendProgress(message: string, percent: number) {
+  sendToUI({ type: 'extraction-progress', message, percent });
+}
 
-  // This shows the HTML page in "ui.html".
-  figma.showUI(__html__);
+sendToUI({ type: 'init', userName, fileKey });
 
-  // Calls to "parent.postMessage" from within the HTML page will trigger this
-  // callback. The callback will be passed the "pluginMessage" property of the
-  // posted message.
-  figma.ui.onmessage =  (msg: {type: string, count: number}) => {
-    // One way of distinguishing between different types of messages sent from
-    // your HTML page is to use an object with a "type" property like this.
-    if (msg.type === 'create-shapes') {
-      // This plugin creates shapes and connectors on the screen.
-      const numberOfShapes = msg.count;
+// Message handler
+figma.ui.onmessage = async (msg: UIMessage) => {
+  switch (msg.type) {
+    case 'extract-components':
+      await extractComponents(msg.scope);
+      break;
 
-      const nodes: SceneNode[] = [];
-      for (let i = 0; i < numberOfShapes; i++) {
-        const shape = figma.createShapeWithText();
-        // You can set shapeType to one of: 'SQUARE' | 'ELLIPSE' | 'ROUNDED_RECTANGLE' | 'DIAMOND' | 'TRIANGLE_UP' | 'TRIANGLE_DOWN' | 'PARALLELOGRAM_RIGHT' | 'PARALLELOGRAM_LEFT'
-        shape.shapeType = 'ROUNDED_RECTANGLE';
-        shape.x = i * (shape.width + 200);
-        shape.fills = [{ type: 'SOLID', color: { r: 1, g: 0.5, b: 0 } }];
-        figma.currentPage.appendChild(shape);
-        nodes.push(shape);
+    case 'extract-single':
+      await extractSingle(msg.nodeId);
+      break;
+
+    case 'navigate':
+      navigateToNode(msg.nodeId);
+      break;
+
+    case 'reconstruct':
+      // Phase 4: stub
+      break;
+  }
+};
+
+async function extractComponents(scope: 'page' | 'selection') {
+  try {
+    sendProgress('discovering components...', 5);
+
+    let nodes: (ComponentNode | ComponentSetNode)[];
+
+    if (scope === 'selection') {
+      nodes = [];
+      for (const node of figma.currentPage.selection) {
+        if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+          nodes.push(node);
+        }
+        if ('findAllWithCriteria' in node) {
+          const found = (node as FrameNode).findAllWithCriteria({
+            types: ['COMPONENT', 'COMPONENT_SET'],
+          });
+          nodes.push(...found);
+        }
       }
-
-      for (let i = 0; i < numberOfShapes - 1; i++) {
-        const connector = figma.createConnector();
-        connector.strokeWeight = 8;
-
-        connector.connectorStart = {
-          endpointNodeId: nodes[i].id,
-          magnet: 'AUTO',
-        };
-
-        connector.connectorEnd = {
-          endpointNodeId: nodes[i + 1].id,
-          magnet: 'AUTO',
-        };
-      }
-
-      figma.currentPage.selection = nodes;
-      figma.viewport.scrollAndZoomIntoView(nodes);
+    } else {
+      nodes = figma.currentPage.findAllWithCriteria({
+        types: ['COMPONENT', 'COMPONENT_SET'],
+      });
     }
 
-    // Make sure to close the plugin when you're done. Otherwise the plugin will
-    // keep running, which shows the cancel button at the bottom of the screen.
-    figma.closePlugin();
-  };
+    // Deduplicate: prefer COMPONENT_SET over its children
+    const setIds = new Set(
+      nodes
+        .filter((n): n is ComponentSetNode => n.type === 'COMPONENT_SET')
+        .map((n) => n.id)
+    );
+    const filtered = nodes.filter((n) => {
+      if (n.type === 'COMPONENT' && n.parent?.type === 'COMPONENT_SET') {
+        return !setIds.has(n.parent.id);
+      }
+      return true;
+    });
+
+    // Deduplicate by id
+    const unique = [...new Map(filtered.map((n) => [n.id, n])).values()];
+
+    sendProgress(`found ${unique.length} components. extracting...`, 15);
+
+    const results: ExtractedComponent[] = [];
+    const total = unique.length;
+
+    for (let i = 0; i < total; i++) {
+      const node = unique[i];
+      const percent = 15 + Math.round((i / total) * 80);
+      sendProgress(`extracting ${node.name}... (${i + 1}/${total})`, percent);
+
+      // Yield to UI
+      if (i % 5 === 0) {
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
+      try {
+        // Export JSON snapshot
+        const jsonBytes = await node.exportAsync({ format: 'JSON_REST_V1' } as any);
+        const jsonString = String.fromCharCode(...new Uint8Array(jsonBytes));
+        const snapshot = JSON.parse(jsonString);
+
+        // Export thumbnail
+        const pngBytes = await node.exportAsync({
+          format: 'PNG',
+          constraint: { type: 'SCALE', value: 2 },
+        });
+
+        // Get component key
+        const key = 'key' in node ? (node as ComponentNode).key : node.id;
+
+        // Get property definitions
+        let propertyDefinitions: any = null;
+        if ('componentPropertyDefinitions' in node) {
+          propertyDefinitions = node.componentPropertyDefinitions;
+        }
+
+        // Count variants
+        let variantCount = 1;
+        if (node.type === 'COMPONENT_SET') {
+          variantCount = node.children.length;
+        }
+
+        // Count properties
+        const propertyCount = propertyDefinitions
+          ? Object.keys(propertyDefinitions).length
+          : 0;
+
+        // Get publish status
+        const publishStatus = await (node as ComponentNode).getPublishStatusAsync();
+
+        // Collect bound variables (shallow — top-level only for now)
+        const variablesUsed: string[] = [];
+        if ('boundVariables' in node && node.boundVariables) {
+          for (const [prop, binding] of Object.entries(node.boundVariables as Record<string, any>)) {
+            if (binding && typeof binding === 'object' && 'id' in binding) {
+              variablesUsed.push(`${prop}:${binding.id}`);
+            }
+          }
+        }
+
+        results.push({
+          key,
+          name: node.name,
+          nodeId: node.id,
+          snapshot,
+          propertyDefinitions,
+          variablesUsed,
+          thumbnailBytes: Array.from(new Uint8Array(pngBytes)),
+          publishStatus,
+          variantCount,
+          propertyCount,
+        });
+      } catch (err: any) {
+        console.error(`Failed to extract ${node.name}:`, err);
+      }
+    }
+
+    sendProgress('extraction complete', 100);
+    sendToUI({ type: 'extraction-complete', components: results });
+  } catch (err: any) {
+    sendToUI({ type: 'error', message: err.message || 'extraction failed' });
+  }
+}
+
+async function extractSingle(nodeId: string) {
+  const node = figma.getNodeById(nodeId);
+  if (!node || (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET')) {
+    sendToUI({ type: 'error', message: 'node not found or not a component' });
+    return;
+  }
+
+  sendProgress(`extracting ${node.name}...`, 50);
+
+  try {
+    const jsonBytes = await node.exportAsync({ format: 'JSON_REST_V1' } as any);
+    const jsonString = String.fromCharCode(...new Uint8Array(jsonBytes));
+    const snapshot = JSON.parse(jsonString);
+
+    const pngBytes = await node.exportAsync({
+      format: 'PNG',
+      constraint: { type: 'SCALE', value: 2 },
+    });
+
+    const key = 'key' in node ? (node as ComponentNode).key : node.id;
+    let propertyDefinitions: any = null;
+    if ('componentPropertyDefinitions' in node) {
+      propertyDefinitions = node.componentPropertyDefinitions;
+    }
+    let variantCount = 1;
+    if (node.type === 'COMPONENT_SET') {
+      variantCount = node.children.length;
+    }
+    const propertyCount = propertyDefinitions ? Object.keys(propertyDefinitions).length : 0;
+    const publishStatus = await (node as ComponentNode).getPublishStatusAsync();
+
+    sendToUI({
+      type: 'extraction-complete',
+      components: [{
+        key,
+        name: node.name,
+        nodeId: node.id,
+        snapshot,
+        propertyDefinitions,
+        variablesUsed: [],
+        thumbnailBytes: Array.from(new Uint8Array(pngBytes)),
+        publishStatus,
+        variantCount,
+        propertyCount,
+      }],
+    });
+  } catch (err: any) {
+    sendToUI({ type: 'error', message: err.message || 'extraction failed' });
+  }
+}
+
+function navigateToNode(nodeId: string) {
+  const node = figma.getNodeById(nodeId);
+  if (node && 'x' in node) {
+    figma.currentPage.selection = [node as SceneNode];
+    figma.viewport.scrollAndZoomIntoView([node as SceneNode]);
+  }
 }

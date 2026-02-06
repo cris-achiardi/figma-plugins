@@ -1,44 +1,27 @@
 {
-  "name": "DS-git",
-  "version": "1.0.0",
-  "description": "Your Figma Plugin",
+  "name": "ds-git",
+  "version": "0.1.0",
+  "description": "Component changelog with versioned snapshots and approval workflow",
   "main": "code.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "lint": "eslint --ext .ts,.tsx --ignore-pattern node_modules .",
-    "lint:fix": "eslint --ext .ts,.tsx --ignore-pattern node_modules --fix .",
-    "watch": "npm run build -- --watch"
+    "build": "npm run build:code && npm run build:ui && npm run inline-ui",
+    "build:code": "esbuild code.ts --bundle --outfile=code.js --target=es2017",
+    "build:ui": "esbuild ui.tsx --bundle --outfile=ui.js --target=es2017",
+    "inline-ui": "node inline-ui.js",
+    "watch": "npm run build:code -- --watch & npm run build:ui -- --watch"
   },
   "author": "",
   "license": "",
   "devDependencies": {
-    "@figma/eslint-plugin-figma-plugins": "*",
-    "@figma/plugin-typings": "*",
-    "@typescript-eslint/eslint-plugin": "^6.12.0",
-    "@typescript-eslint/parser": "^6.12.0",
-    "eslint": "^8.54.0",
-    "typescript": "^5.3.2"
+    "@figma/plugin-typings": "^1.121.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "esbuild": "^0.27.1",
+    "typescript": "^5.3.0"
   },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "plugin:@figma/figma-plugins/recommended"
-    ],
-    "parser": "@typescript-eslint/parser",
-    "parserOptions": {
-      "project": "./tsconfig.json"
-    },
-    "root": true,
-    "rules": {
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "argsIgnorePattern": "^_",
-          "varsIgnorePattern": "^_",
-          "caughtErrorsIgnorePattern": "^_"
-        }
-      ]
-    }
+  "dependencies": {
+    "deep-diff": "^1.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

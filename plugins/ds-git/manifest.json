@@ -3,17 +3,10 @@
   "id": "1601722337596645076",
   "api": "1.0.0",
   "main": "code.js",
-  "capabilities": [],
-  "enableProposedApi": false,
-  "documentAccess": "dynamic-page",
-  "editorType": [
-    "figma",
-    "figjam"
-  ],
   "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
   "networkAccess": {
-    "allowedDomains": [
-      "none"
-    ]
+    "allowedDomains": ["https://*.supabase.co", "https://*.supabase.in"]
   }
 }
