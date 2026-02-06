@@ -1,0 +1,255 @@
+{
+  "document": {
+    "id": "12:45",
+    "name": "Button",
+    "type": "COMPONENT_SET",
+    "visible": true,
+    "absoluteBoundingBox": { "x": 0, "y": 0, "width": 560, "height": 200 },
+    "absoluteRenderBounds": { "x": 0, "y": 0, "width": 560, "height": 200 },
+    "clipsContent": true,
+    "componentPropertyDefinitions": {
+      "Size": {
+        "type": "VARIANT",
+        "defaultValue": "Medium",
+        "variantOptions": ["Small", "Medium", "Large"]
+      },
+      "Style": {
+        "type": "VARIANT",
+        "defaultValue": "Primary",
+        "variantOptions": ["Primary", "Secondary", "Ghost"]
+      },
+      "Disabled#0:1": {
+        "type": "BOOLEAN",
+        "defaultValue": false
+      },
+      "Label#0:2": {
+        "type": "TEXT",
+        "defaultValue": "Button"
+      },
+      "IconLeft#0:3": {
+        "type": "INSTANCE_SWAP",
+        "defaultValue": "5:20",
+        "preferredValues": [
+          { "type": "COMPONENT", "key": "abc123" },
+          { "type": "COMPONENT", "key": "def456" }
+        ]
+      }
+    },
+    "children": [
+      {
+        "id": "12:46",
+        "name": "Size=Medium, Style=Primary",
+        "type": "COMPONENT",
+        "visible": true,
+        "absoluteBoundingBox": { "x": 0, "y": 0, "width": 160, "height": 40 },
+        "absoluteRenderBounds": { "x": 0, "y": 0, "width": 160, "height": 40 },
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": { "r": 0.2313, "g": 0.3882, "b": 0.949, "a": 1 },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:42:128"
+              }
+            }
+          }
+        ],
+        "strokes": [],
+        "strokeWeight": 0,
+        "strokeAlign": "INSIDE",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "visible": true,
+            "color": { "r": 0, "g": 0, "b": 0, "a": 0.08 },
+            "offset": { "x": 0, "y": 1 },
+            "radius": 2,
+            "spread": 0,
+            "blendMode": "NORMAL"
+          }
+        ],
+        "cornerRadius": 8,
+        "cornerSmoothing": 0,
+        "paddingLeft": 16,
+        "paddingRight": 16,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": 8,
+        "primaryAxisSizingMode": "AUTO",
+        "counterAxisSizingMode": "AUTO",
+        "primaryAxisAlignItems": "CENTER",
+        "counterAxisAlignItems": "CENTER",
+        "clipsContent": false,
+        "opacity": 1,
+        "blendMode": "PASS_THROUGH",
+        "constraints": { "vertical": "TOP", "horizontal": "LEFT" },
+        "children": [
+          {
+            "id": "12:47",
+            "name": "IconLeft",
+            "type": "INSTANCE",
+            "visible": true,
+            "absoluteBoundingBox": { "x": 16, "y": 12, "width": 16, "height": 16 },
+            "componentId": "5:20",
+            "componentProperties": {
+              "IconLeft#0:3": {
+                "type": "INSTANCE_SWAP",
+                "value": "5:20"
+              }
+            },
+            "children": [
+              {
+                "id": "5:21",
+                "name": "Vector",
+                "type": "VECTOR",
+                "fills": [
+                  {
+                    "blendMode": "NORMAL",
+                    "type": "SOLID",
+                    "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+                  }
+                ],
+                "strokeWeight": 0,
+                "constraints": { "vertical": "SCALE", "horizontal": "SCALE" }
+              }
+            ]
+          },
+          {
+            "id": "12:48",
+            "name": "Label",
+            "type": "TEXT",
+            "visible": true,
+            "absoluteBoundingBox": { "x": 40, "y": 10, "width": 50, "height": 20 },
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+              }
+            ],
+            "characters": "Button",
+            "style": {
+              "fontFamily": "Inter",
+              "fontPostScriptName": "Inter-SemiBold",
+              "fontWeight": 600,
+              "fontSize": 14,
+              "lineHeightPx": 20,
+              "lineHeightPercent": 142.857,
+              "lineHeightUnit": "PIXELS",
+              "letterSpacing": 0,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "textAutoResize": "WIDTH_AND_HEIGHT",
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            },
+            "characterStyleOverrides": [],
+            "layoutAlign": "INHERIT",
+            "layoutGrow": 0,
+            "componentPropertyReferences": {
+              "characters": "Label#0:2",
+              "visible": null
+            }
+          }
+        ]
+      },
+      {
+        "id": "12:50",
+        "name": "Size=Medium, Style=Secondary",
+        "type": "COMPONENT",
+        "visible": true,
+        "absoluteBoundingBox": { "x": 180, "y": 0, "width": 160, "height": 40 },
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": { "r": 1, "g": 1, "b": 1, "a": 1 }
+          }
+        ],
+        "strokes": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": { "r": 0.8196, "g": 0.8392, "b": 0.8745, "a": 1 }
+          }
+        ],
+        "strokeWeight": 1,
+        "strokeAlign": "INSIDE",
+        "cornerRadius": 8,
+        "paddingLeft": 16,
+        "paddingRight": 16,
+        "paddingTop": 8,
+        "paddingBottom": 8,
+        "layoutMode": "HORIZONTAL",
+        "itemSpacing": 8,
+        "primaryAxisAlignItems": "CENTER",
+        "counterAxisAlignItems": "CENTER",
+        "children": [
+          {
+            "id": "12:51",
+            "name": "Label",
+            "type": "TEXT",
+            "characters": "Button",
+            "fills": [
+              {
+                "type": "SOLID",
+                "color": { "r": 0.2313, "g": 0.3882, "b": 0.949, "a": 1 }
+              }
+            ],
+            "style": {
+              "fontFamily": "Inter",
+              "fontPostScriptName": "Inter-SemiBold",
+              "fontWeight": 600,
+              "fontSize": 14,
+              "lineHeightPx": 20
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "components": {
+    "12:46": {
+      "key": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6ab12",
+      "name": "Size=Medium, Style=Primary",
+      "description": "",
+      "remote": false,
+      "componentSetId": "12:45",
+      "documentationLinks": []
+    },
+    "12:50": {
+      "key": "f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1cd34",
+      "name": "Size=Medium, Style=Secondary",
+      "description": "",
+      "remote": false,
+      "componentSetId": "12:45",
+      "documentationLinks": []
+    }
+  },
+  "componentSets": {
+    "12:45": {
+      "key": "9z8y7x6w5v4u9z8y7x6w5v4u9z8y7x6w5v4uef56",
+      "name": "Button",
+      "description": "Primary action button with multiple sizes and styles",
+      "remote": false,
+      "documentationLinks": [
+        { "uri": "https://design-system.example.com/components/button" }
+      ]
+    }
+  },
+  "styles": {
+    "1:5": {
+      "key": "style_key_primary_fill",
+      "name": "Brand/Primary",
+      "styleType": "FILL",
+      "remote": false,
+      "description": "Primary brand color"
+    }
+  },
+  "schemaVersion": 0,
+  "name": "Button",
+  "version": "1234567890"
+}
