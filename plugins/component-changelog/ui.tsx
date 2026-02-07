@@ -395,10 +395,9 @@ function ProgressBar({ percent, message }: { percent: number; message: string })
   );
 }
 
-function RestoreModal({ versionLabel, componentName, nodeId, snapshot, onClose }: {
+function RestoreModal({ versionLabel, componentName, snapshot, onClose }: {
   versionLabel: string;
   componentName: string;
-  nodeId: string;
   snapshot: any;
   onClose: () => void;
 }) {
@@ -433,12 +432,6 @@ function RestoreModal({ versionLabel, componentName, nodeId, snapshot, onClose }
     setRestoring(true);
     setWarnings(null);
     postToCode({ type: 'reconstruct-copy', snapshot, componentName });
-  };
-
-  const handleModify = () => {
-    setRestoring(true);
-    setWarnings(null);
-    postToCode({ type: 'reconstruct-modify', snapshot, nodeId });
   };
 
   return (
@@ -479,7 +472,7 @@ function RestoreModal({ versionLabel, componentName, nodeId, snapshot, onClose }
         ) : (
           <>
             <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-              choose how to restore this snapshot:
+              restore this snapshot as a new frame on the canvas:
             </span>
 
             <div
@@ -492,19 +485,6 @@ function RestoreModal({ versionLabel, componentName, nodeId, snapshot, onClose }
               <span style={{ ...s.heading, fontSize: 12, color: 'var(--accent)' }}>$ create_copy</span>
               <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
                 creates a new frame on the canvas from the snapshot. safe, non-destructive.
-              </span>
-            </div>
-
-            <div
-              onClick={handleModify}
-              style={{
-                ...s.card, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
-                border: '1px solid var(--diff-changed)',
-              }}
-            >
-              <span style={{ ...s.heading, fontSize: 12, color: 'var(--diff-changed)' }}>$ modify_existing</span>
-              <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
-                clears the existing component and rebuilds from snapshot. destructive — overwrites current state.
               </span>
             </div>
 
@@ -1698,7 +1678,6 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
           <RestoreModal
             versionLabel={`v${version.version}`}
             componentName={version.component_name}
-            nodeId={comp.nodeId}
             snapshot={version.snapshot}
             onClose={() => setShowRestore(false)}
           />
@@ -1815,7 +1794,6 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
         <RestoreModal
           versionLabel={`v${restoreVersion.version}`}
           componentName={restoreVersion.component_name}
-          nodeId={comp.nodeId}
           snapshot={restoreVersion.snapshot}
           onClose={() => setRestoreVersion(null)}
         />

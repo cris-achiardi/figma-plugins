@@ -287,25 +287,7 @@ figma.ui.onmessage = async (msg: UIMessage) => {
     case 'reconstruct-copy': {
       try {
         const result = await reconstructFromSnapshot(msg.snapshot, {
-          mode: 'copy',
           componentName: msg.componentName,
-          onProgress: (message, percent) => {
-            const prog: CodeMessage = { type: 'reconstruct-progress', message, percent };
-            figma.ui.postMessage(prog);
-          },
-        });
-        const done: CodeMessage = { type: 'reconstruct-complete', nodeId: result.nodeId, warnings: result.warnings };
-        figma.ui.postMessage(done);
-      } catch (err) {
-        sendError(`Reconstruction failed: ${err}`);
-      }
-      break;
-    }
-    case 'reconstruct-modify': {
-      try {
-        const result = await reconstructFromSnapshot(msg.snapshot, {
-          mode: 'modify',
-          targetNodeId: msg.nodeId,
           onProgress: (message, percent) => {
             const prog: CodeMessage = { type: 'reconstruct-progress', message, percent };
             figma.ui.postMessage(prog);

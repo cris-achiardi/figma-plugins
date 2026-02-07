@@ -147,7 +147,6 @@ export type UIMessage =
   | { type: 'load-settings' }
   | { type: 'clear-settings' }
   | { type: 'reconstruct-copy'; snapshot: any; componentName: string }
-  | { type: 'reconstruct-modify'; snapshot: any; nodeId: string }
   | { type: 'scan-local-components' };
 
 // Messages: Code -> UI

@@ -7,8 +7,6 @@ let nodeCount = 0;
 export async function reconstructFromSnapshot(
   snapshot: any,
   options: {
-    mode: 'copy' | 'modify';
-    targetNodeId?: string;
     componentName?: string;
     onProgress: (message: string, percent: number) => void;
   }
@@ -22,68 +20,22 @@ export async function reconstructFromSnapshot(
 
   options.onProgress('Preparing reconstruction...', 5);
 
-  if (options.mode === 'copy') {
-    // Create a new node on the current page
-    const root = await createNodeFromSnapshot(doc, figma.currentPage, null, warnings, fontCache, options.onProgress);
-    if (!root) throw new Error('Failed to create root node from snapshot');
+  // Create a new node on the current page
+  const root = await createNodeFromSnapshot(doc, figma.currentPage, null, warnings, fontCache, options.onProgress);
+  if (!root) throw new Error('Failed to create root node from snapshot');
 
-    root.name = `${options.componentName || doc.name || 'Component'} (restored)`;
+  root.name = `${options.componentName || doc.name || 'Component'} (restored)`;
 
-    // Position near viewport center
-    const vp = figma.viewport.center;
-    root.x = Math.round(vp.x - root.width / 2);
-    root.y = Math.round(vp.y - root.height / 2);
+  // Position near viewport center
+  const vp = figma.viewport.center;
+  root.x = Math.round(vp.x - root.width / 2);
+  root.y = Math.round(vp.y - root.height / 2);
 
-    figma.currentPage.selection = [root];
-    figma.viewport.scrollAndZoomIntoView([root]);
-
-    options.onProgress('Reconstruction complete!', 100);
-    return { nodeId: root.id, warnings };
-  }
-
-  // Modify mode — clear and rebuild
-  if (!options.targetNodeId) throw new Error('targetNodeId required for modify mode');
-
-  const existing = await figma.getNodeByIdAsync(options.targetNodeId);
-  if (!existing) throw new Error(`Node ${options.targetNodeId} not found`);
-  if (!('children' in existing)) throw new Error('Target node does not support children');
-
-  const target = existing as SceneNode & ChildrenMixin;
-  const origX = (target as any).x ?? 0;
-  const origY = (target as any).y ?? 0;
-
-  options.onProgress('Clearing existing children...', 10);
-
-  // Remove all children
-  while (target.children.length > 0) {
-    target.children[0].remove();
-  }
-
-  // Apply snapshot properties to the root node
-  applyCommonProperties(target as SceneNode, doc);
-  if ('layoutMode' in target) {
-    applyFrameProperties(target as FrameNode, doc);
-  }
-
-  // Rebuild children
-  if (doc.children && Array.isArray(doc.children)) {
-    for (let i = 0; i < doc.children.length; i++) {
-      const childSnap = doc.children[i];
-      const percent = 15 + Math.round((i / doc.children.length) * 80);
-      options.onProgress(`Rebuilding: ${childSnap.name || `child ${i + 1}`}`, percent);
-      await createNodeFromSnapshot(childSnap, target, doc, warnings, fontCache, options.onProgress);
-    }
-  }
-
-  // Restore original position
-  (target as any).x = origX;
-  (target as any).y = origY;
-
-  figma.currentPage.selection = [target as SceneNode];
-  figma.viewport.scrollAndZoomIntoView([target as SceneNode]);
+  figma.currentPage.selection = [root];
+  figma.viewport.scrollAndZoomIntoView([root]);
 
   options.onProgress('Reconstruction complete!', 100);
-  return { nodeId: target.id, warnings };
+  return { nodeId: root.id, warnings };
 }
 
 // ── Node creation dispatcher ─────────────────────────
@@ -262,32 +214,86 @@ async function buildComponentSet(
     return await buildFrame(snap, parent, parentSnap, warnings, fontCache, onProgress);
   }
 
-  const childComponents: ComponentNode[] = [];
+  const childEntries: { comp: ComponentNode; childSnap: any }[] = [];
   for (const childSnap of snap.children) {
     if (childSnap.type === 'COMPONENT') {
       const comp = await buildComponent(childSnap, parent, null, warnings, fontCache, onProgress);
-      childComponents.push(comp);
+      childEntries.push({ comp, childSnap });
     } else {
       // Non-component children in a component set — unusual, build as frame
       await createNodeFromSnapshot(childSnap, parent, snap, warnings, fontCache, onProgress);
     }
   }
 
-  if (childComponents.length < 2) {
+  if (childEntries.length < 2) {
     // combineAsVariants requires 2+ components; if only 1, just name it and return
-    if (childComponents.length === 1) {
-      childComponents[0].name = snap.name || childComponents[0].name;
-      return childComponents[0];
+    if (childEntries.length === 1) {
+      childEntries[0].comp.name = snap.name || childEntries[0].comp.name;
+      return childEntries[0].comp;
     }
     warnings.push(`"${snap.name || 'ComponentSet'}": no component children, created as frame`);
     return await buildFrame(snap, parent, parentSnap, warnings, fontCache, onProgress);
   }
 
+  const childComponents = childEntries.map(e => e.comp);
   const componentSet = figma.combineAsVariants(childComponents, parent as FrameNode | PageNode);
-  componentSet.name = snap.name || 'ComponentSet';
-  applyCommonProperties(componentSet, snap);
-  applyFrameProperties(componentSet, snap);
-  applyChildLayoutProperties(componentSet, snap, parentSnap);
+
+  // Only apply visual properties — do NOT resize or overwrite auto-layout
+  applyVisualOnlyProperties(componentSet, snap);
+  applyCornerRadius(componentSet, snap);
+
+  // Position variants using original snapshot coordinates
+  const SET_PADDING = 16;
+  const parentBB = snap.absoluteBoundingBox;
+  const hasCoords = parentBB && childEntries.every(e => e.childSnap.absoluteBoundingBox);
+
+  if (hasCoords) {
+    // Compute relative positions from parent bounding box
+    const positions = childEntries.map(({ childSnap: cs }) => ({
+      x: (cs.absoluteBoundingBox.x ?? 0) - (parentBB.x ?? 0),
+      y: (cs.absoluteBoundingBox.y ?? 0) - (parentBB.y ?? 0),
+    }));
+
+    // Normalize so top-left variant starts at (padding, padding)
+    const minX = Math.min(...positions.map(p => p.x));
+    const minY = Math.min(...positions.map(p => p.y));
+
+    // Disable auto-layout so manual positioning works
+    try { (componentSet as any).layoutMode = 'NONE'; } catch { /* */ }
+
+    let maxRight = 0;
+    let maxBottom = 0;
+    for (let i = 0; i < childEntries.length; i++) {
+      const comp = childEntries[i].comp;
+      comp.x = SET_PADDING + positions[i].x - minX;
+      comp.y = SET_PADDING + positions[i].y - minY;
+      maxRight = Math.max(maxRight, comp.x + comp.width);
+      maxBottom = Math.max(maxBottom, comp.y + comp.height);
+    }
+
+    componentSet.resize(
+      Math.max(1, maxRight + SET_PADDING),
+      Math.max(1, maxBottom + SET_PADDING),
+    );
+  } else {
+    // No coordinate data — fall back to auto-layout
+    try {
+      if (!componentSet.layoutMode || componentSet.layoutMode === 'NONE') {
+        componentSet.layoutMode = 'HORIZONTAL';
+      }
+      componentSet.primaryAxisSizingMode = 'AUTO';
+      componentSet.counterAxisSizingMode = 'AUTO';
+      componentSet.paddingTop = SET_PADDING;
+      componentSet.paddingBottom = SET_PADDING;
+      componentSet.paddingLeft = SET_PADDING;
+      componentSet.paddingRight = SET_PADDING;
+      if (typeof snap.itemSpacing === 'number') {
+        componentSet.itemSpacing = snap.itemSpacing;
+      } else if (componentSet.itemSpacing === 0) {
+        componentSet.itemSpacing = 20;
+      }
+    } catch { /* */ }
+  }
 
   return componentSet;
 }
@@ -305,6 +311,52 @@ function buildVectorPlaceholder(
 }
 
 // ── Property application helpers ─────────────────────
+
+function applyVisualOnlyProperties(node: SceneNode, snap: any) {
+  // Visual properties only — no resize, no layout. Used after combineAsVariants.
+  if (snap.name) node.name = snap.name;
+  if (snap.visible === false) node.visible = false;
+  if (typeof snap.opacity === 'number') node.opacity = snap.opacity;
+  if (snap.blendMode && snap.blendMode !== 'PASS_THROUGH') {
+    try { node.blendMode = snap.blendMode; } catch { /* unsupported blend mode */ }
+  }
+  if (typeof snap.clipsContent === 'boolean' && 'clipsContent' in node) {
+    (node as FrameNode).clipsContent = snap.clipsContent;
+  }
+
+  // Fills
+  if (snap.fills && Array.isArray(snap.fills) && 'fills' in node) {
+    const paints = convertPaints(snap.fills);
+    if (paints.length > 0) {
+      (node as GeometryMixin).fills = paints;
+    }
+  }
+
+  // Strokes
+  if (snap.strokes && Array.isArray(snap.strokes) && 'strokes' in node) {
+    const paints = convertPaints(snap.strokes);
+    if (paints.length > 0) {
+      (node as GeometryMixin).strokes = paints;
+    }
+  }
+  if (typeof snap.strokeWeight === 'number' && 'strokeWeight' in node) {
+    (node as GeometryMixin).strokeWeight = snap.strokeWeight;
+  }
+  if (snap.strokeAlign && 'strokeAlign' in node) {
+    const align = snap.strokeAlign as string;
+    if (['INSIDE', 'OUTSIDE', 'CENTER'].includes(align)) {
+      (node as GeometryMixin).strokeAlign = align as 'INSIDE' | 'OUTSIDE' | 'CENTER';
+    }
+  }
+
+  // Effects
+  if (snap.effects && Array.isArray(snap.effects) && 'effects' in node) {
+    const effects = convertEffects(snap.effects);
+    if (effects.length > 0) {
+      (node as BlendMixin).effects = effects;
+    }
+  }
+}
 
 function applyCommonProperties(node: SceneNode, snap: any) {
   if (snap.name) node.name = snap.name;
