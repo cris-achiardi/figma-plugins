@@ -2,7 +2,7 @@
 export const prerender = false;
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
-import AuditTimeline from '../../components/dashboard/AuditTimeline.astro';
+import ActivityList from '../../components/dashboard/ActivityList.tsx';
 import { getProjects, getRecentActivity } from '../../lib/metrics';
 
 const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
@@ -22,9 +22,7 @@ if (projectId) {
   {!projectId ? (
     <p class="empty">No projects found.</p>
   ) : (
-    <section class="activity-section">
-      <AuditTimeline entries={activity} />
-    </section>
+    <ActivityList client:load entries={activity} />
   )}
 </DashboardLayout>
 
