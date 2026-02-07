@@ -80,11 +80,16 @@ async function createNodeFromSnapshot(
     case 'STAR':
     case 'REGULAR_POLYGON':
     case 'LINE':
-      warnings.push(`"${snapNode.name || type}": ${type} replaced with placeholder rectangle (REST API lacks vector geometry)`);
-      return buildVectorPlaceholder(snapNode, parent, parentSnap, warnings);
     case 'BOOLEAN_OPERATION':
-      warnings.push(`"${snapNode.name || 'BooleanOp'}": BOOLEAN_OPERATION downgraded to Frame`);
-      return await buildFrame(snapNode, parent, parentSnap, warnings, fontCache, onProgress);
+      if (snapNode._svgData) {
+        return buildFromSvg(snapNode, parent, parentSnap, warnings);
+      }
+      if (type === 'BOOLEAN_OPERATION') {
+        warnings.push(`"${snapNode.name || 'BooleanOp'}": BOOLEAN_OPERATION downgraded to Frame (no SVG data)`);
+        return await buildFrame(snapNode, parent, parentSnap, warnings, fontCache, onProgress);
+      }
+      warnings.push(`"${snapNode.name || type}": ${type} replaced with placeholder rectangle (no SVG data)`);
+      return buildVectorPlaceholder(snapNode, parent, parentSnap, warnings);
     default:
       warnings.push(`Unknown node type "${type}" for "${snapNode.name || '?'}" — skipped`);
       return null;
@@ -308,6 +313,45 @@ function buildVectorPlaceholder(
   applyCornerRadius(rect, snap);
   applyChildLayoutProperties(rect, snap, parentSnap);
   return rect;
+}
+
+function buildFromSvg(
+  snap: any, parent: BaseNode & ChildrenMixin, parentSnap: any,
+  warnings: string[],
+): SceneNode {
+  const svgFrame = figma.createNodeFromSvg(snap._svgData);
+
+  // Flatten: if the SVG wrapper has exactly one child, extract it
+  let result: SceneNode;
+  if (svgFrame.children.length === 1) {
+    const inner = svgFrame.children[0];
+    parent.appendChild(inner);
+    svgFrame.remove();
+    result = inner;
+  } else {
+    parent.appendChild(svgFrame);
+    result = svgFrame;
+  }
+
+  // Apply name from snapshot
+  result.name = snap.name || result.name;
+
+  // Apply size from snapshot bounding box
+  if (snap.absoluteBoundingBox && 'resize' in result) {
+    const bb = snap.absoluteBoundingBox;
+    if (typeof bb.width === 'number' && typeof bb.height === 'number') {
+      (result as any).resize(Math.max(1, bb.width), Math.max(1, bb.height));
+    }
+  }
+
+  // Apply visibility and opacity
+  if (snap.visible === false) result.visible = false;
+  if (typeof snap.opacity === 'number') result.opacity = snap.opacity;
+
+  applyChildLayoutProperties(result, snap, parentSnap);
+
+  warnings.push(`"${snap.name || snap.type}": reconstructed from SVG`);
+  return result;
 }
 
 // ── Property application helpers ─────────────────────

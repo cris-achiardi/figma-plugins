@@ -54,6 +54,21 @@ const htmlTemplate = `<!DOCTYPE html>
       font-family: var(--font-body);
       font-size: 12px;
     }
+
+    /* Custom scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    *::-webkit-scrollbar { width: 6px; height: 6px; }
+    *::-webkit-scrollbar-track { background: transparent; }
+    *::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--text-tertiary);
+    }
   </style>
 </head>
 <body>

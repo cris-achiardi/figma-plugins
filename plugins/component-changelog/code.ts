@@ -68,6 +68,44 @@ function collectBoundVariables(node: SceneNode): Record<string, any> {
   return vars;
 }
 
+// Vector node types whose geometry the REST API omits
+const VECTOR_TYPES = new Set(['VECTOR', 'STAR', 'REGULAR_POLYGON', 'LINE', 'BOOLEAN_OPERATION']);
+
+// Recursively collect SVG exports for all vector-type nodes under `node`
+async function collectVectorSvgs(node: SceneNode): Promise<Record<string, string>> {
+  const svgMap: Record<string, string> = {};
+
+  async function walk(n: SceneNode) {
+    if (VECTOR_TYPES.has(n.type)) {
+      try {
+        const svgBytes = await n.exportAsync({ format: 'SVG' });
+        svgMap[n.id] = String.fromCharCode(...svgBytes);
+      } catch { /* skip nodes that fail SVG export */ }
+    }
+    if ('children' in n) {
+      for (const child of (n as ChildrenMixin).children) {
+        await walk(child as SceneNode);
+      }
+    }
+  }
+
+  await walk(node);
+  return svgMap;
+}
+
+// Recursively inject _svgData onto matching nodes in the snapshot tree
+function injectSvgData(snapNode: any, svgMap: Record<string, string>) {
+  if (!snapNode) return;
+  if (snapNode.id && svgMap[snapNode.id]) {
+    snapNode._svgData = svgMap[snapNode.id];
+  }
+  if (snapNode.children && Array.isArray(snapNode.children)) {
+    for (const child of snapNode.children) {
+      injectSvgData(child, svgMap);
+    }
+  }
+}
+
 // Extract specific components by node IDs (used after library list selection)
 async function extractSelected(nodeIds: string[]) {
   try {
@@ -89,6 +127,12 @@ async function extractSelected(nodeIds: string[]) {
           format: 'PNG',
           constraint: { type: 'SCALE', value: 2 },
         });
+
+        // Embed SVG data for vector nodes into the snapshot
+        const svgMap = await collectVectorSvgs(compNode);
+        if (Object.keys(svgMap).length > 0 && snapshot?.document) {
+          injectSvgData(snapshot.document, svgMap);
+        }
 
         let propertyDefinitions: any = null;
         if (compNode.type === 'COMPONENT_SET') {
@@ -146,6 +190,12 @@ async function extractSingle(nodeId: string) {
       format: 'PNG',
       constraint: { type: 'SCALE', value: 2 },
     });
+
+    // Embed SVG data for vector nodes into the snapshot
+    const svgMap = await collectVectorSvgs(compNode);
+    if (Object.keys(svgMap).length > 0 && snapshot?.document) {
+      injectSvgData(snapshot.document, svgMap);
+    }
 
     let propertyDefinitions: any = null;
     if (compNode.type === 'COMPONENT_SET') {
