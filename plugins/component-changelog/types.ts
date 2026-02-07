@@ -106,6 +106,37 @@ export interface LocalComponentGroup {
   variants: { name: string; nodeId: string; key: string }[];
 }
 
+// Library version (maps to library_versions row)
+export interface LibraryVersion {
+  id: string;
+  project_id: string;
+  version: string;
+  bump_type: BumpType;
+  changelog_message: string | null;
+  published_by: string;
+  published_at: string;
+  created_at: string;
+}
+
+// Junction row (maps to library_version_components row)
+export interface LibraryVersionComponent {
+  library_version_id: string;
+  component_version_id: string;
+  component_key: string;
+  component_name: string;
+}
+
+// Computed at runtime for changelog display
+export interface LibraryChangelogEntry {
+  component_key: string;
+  component_name: string;
+  change_type: 'added' | 'updated' | 'removed';
+  from_version?: string;
+  to_version?: string;
+  bump_type?: BumpType;
+  changelog_message?: string;
+}
+
 // Messages: UI -> Code
 export type UIMessage =
   | { type: 'extract-selected'; nodeIds: string[] }

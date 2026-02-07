@@ -4,7 +4,7 @@ import { diff as deepDiff } from 'deep-diff';
 import type {
   VersionStatus, BumpType,
   ComponentVersion, AuditEntry, ExtractedComponent, LibraryComponent, ComponentGroup,
-  LocalComponentGroup,
+  LocalComponentGroup, LibraryVersion, LibraryVersionComponent, LibraryChangelogEntry,
   UIMessage, CodeMessage,
 } from './types';
 import {
@@ -14,6 +14,8 @@ import {
   getVersionHistory, getLatestPublished, getActiveDraft,
   getVersionById, uploadThumbnail, getAuditLog,
   computeVersion, getProjectVersionMaps,
+  getLatestLibraryVersion, getLibraryVersionHistory, getLibraryVersionComponents,
+  computeLibraryChangelog, publishLibraryVersion, getLibraryVersionChangelog,
 } from './supabase';
 import { getMe, getFileComponents, getLibraryInfo } from './figma-api';
 
@@ -557,6 +559,7 @@ function LibrarySetupScreen({ token, onLibraryConnected, onDisconnect }: {
 function LibraryComponentsScreen({
   token, fileKey, libraryName, userName, projectId, visible,
   onViewDetail, onViewHistory, onChangeLibrary, onDisconnect,
+  onRelease, onReleaseHistory,
 }: {
   token: string;
   fileKey: string;
@@ -568,6 +571,8 @@ function LibraryComponentsScreen({
   onViewHistory: (comp: ExtractedComponent) => void;
   onChangeLibrary: () => void;
   onDisconnect: () => void;
+  onRelease: () => void;
+  onReleaseHistory: () => void;
 }) {
   const [localGroups, setLocalGroups] = React.useState<LocalComponentGroup[]>([]);
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
@@ -774,6 +779,12 @@ function LibraryComponentsScreen({
           <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>{libraryName}</span>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--accent)', padding: '4px 6px' }} onClick={onRelease}>
+            $ release
+          </button>
+          <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-secondary)', padding: '4px 6px' }} onClick={onReleaseHistory}>
+            releases
+          </button>
           <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)' }}>{userName}</span>
           <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-tertiary)', padding: '4px 6px' }} onClick={onChangeLibrary}>
             switch
@@ -1608,6 +1619,393 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
   );
 }
 
+// ── Screen: Library Release (create release) ────────
+
+function LibraryReleaseScreen({ projectId, userName, onBack, onPublished }: {
+  projectId: string;
+  userName: string;
+  onBack: () => void;
+  onPublished: (release: LibraryVersion) => void;
+}) {
+  const [changelog, setChangelog] = React.useState<LibraryChangelogEntry[]>([]);
+  const [latestVersion, setLatestVersion] = React.useState<string | null>(null);
+  const [bumpType, setBumpType] = React.useState<BumpType>('minor');
+  const [releaseNotes, setReleaseNotes] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [publishing, setPublishing] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const [entries, latest] = await Promise.all([
+          computeLibraryChangelog(projectId),
+          getLatestLibraryVersion(projectId),
+        ]);
+        setChangelog(entries);
+        setLatestVersion(latest?.version || null);
+      } catch (err: any) {
+        setError(err.message || 'Failed to compute changelog');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [projectId]);
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    setError(null);
+    try {
+      const release = await publishLibraryVersion(projectId, bumpType, releaseNotes, userName);
+      onPublished(release);
+    } catch (err: any) {
+      setError(err.message || 'Failed to publish release');
+      setPublishing(false);
+    }
+  };
+
+  if (loading) return <ProgressBar percent={50} message="Computing changelog..." />;
+
+  const currentVer = latestVersion || '0.0.0';
+  const hasChanges = changelog.length > 0;
+
+  const changeColors: Record<string, { bg: string; fg: string; prefix: string }> = {
+    added: { bg: '#10B98110', fg: 'var(--diff-added)', prefix: '+' },
+    updated: { bg: '#F59E0B10', fg: 'var(--diff-changed)', prefix: '~' },
+    removed: { bg: '#EF444410', fg: 'var(--diff-removed)', prefix: '-' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 20px', borderBottom: '1px solid var(--border)',
+      }}>
+        <button style={{ ...s.btnGhost, color: 'var(--accent)' }} onClick={onBack}>{'< back'}</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>new_release</span>
+          {latestVersion && (
+            <span style={{ ...s.label, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 'normal' }}>
+              current: v{latestVersion}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {error && (
+          <div style={{
+            padding: '8px 12px', background: '#EF444415', border: '1px solid var(--diff-removed)',
+            ...s.body, fontSize: 11, color: 'var(--diff-removed)',
+          }}>
+            {error}
+          </div>
+        )}
+
+        {!hasChanges ? (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 12, padding: 40,
+          }}>
+            <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-tertiary)' }}>no changes</span>
+            <span style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
+              no component changes since {latestVersion ? `v${latestVersion}` : 'no releases yet'}.<br />
+              publish component versions first, then create a release.
+            </span>
+          </div>
+        ) : (
+          <>
+            {/* Changelog */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={s.sectionTitle}>// changelog ({changelog.length} component{changelog.length !== 1 ? 's' : ''})</span>
+              <div style={{ border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2, padding: 8 }}>
+                {changelog.map((entry, i) => {
+                  const c = changeColors[entry.change_type];
+                  let text = entry.component_name;
+                  if (entry.change_type === 'updated' && entry.from_version && entry.to_version) {
+                    text += `: v${entry.from_version} → v${entry.to_version}`;
+                  } else if (entry.to_version) {
+                    text += ` v${entry.to_version}`;
+                  }
+                  if (entry.changelog_message) {
+                    text += ` — ${entry.changelog_message}`;
+                  }
+                  return (
+                    <div key={i} style={{
+                      display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 8px',
+                      background: c.bg,
+                    }}>
+                      <span style={{ ...s.heading, fontSize: 11, color: c.fg, flexShrink: 0 }}>{c.prefix}</span>
+                      <span style={{ ...s.body, fontSize: 11, color: c.fg, wordBreak: 'break-all', flex: 1 }}>
+                        {text}
+                      </span>
+                      {entry.bump_type && <BumpBadge bump={entry.bump_type} />}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bump picker */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={s.sectionTitle}>// version bump</span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['patch', 'minor', 'major'] as BumpType[]).map(bt => {
+                  const active = bumpType === bt;
+                  const newVer = computeVersion(currentVer, bt);
+                  return (
+                    <button
+                      key={bt}
+                      onClick={() => setBumpType(bt)}
+                      style={{
+                        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                        padding: '8px 12px', cursor: 'pointer',
+                        background: active ? 'var(--accent-dim)' : 'none',
+                        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      }}
+                    >
+                      <span style={{
+                        ...s.label, fontSize: 11,
+                        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                        fontWeight: active ? 700 : 'normal',
+                      }}>{bt}</span>
+                      <span style={{
+                        ...s.label, fontSize: 10,
+                        color: active ? 'var(--accent)' : 'var(--text-tertiary)',
+                        fontWeight: 'normal',
+                      }}>{newVer}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Release notes */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={s.sectionTitle}>// release notes (optional)</span>
+              <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: 10 }}>
+                <textarea
+                  value={releaseNotes}
+                  onChange={e => setReleaseNotes(e.target.value)}
+                  placeholder="describe this release..."
+                  style={{
+                    ...s.body, fontSize: 11, background: 'none', border: 'none', color: 'var(--text-primary)',
+                    outline: 'none', width: '100%', minHeight: 80, resize: 'vertical', lineHeight: 1.5,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Publish button */}
+            <button
+              style={{ ...s.btnPrimary, width: '100%', opacity: publishing ? 0.5 : 1 }}
+              onClick={handlePublish}
+              disabled={publishing}
+            >
+              {publishing ? 'publishing...' : `$ publish v${computeVersion(currentVer, bumpType)}`}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Library Release History ──────────────────
+
+function LibraryReleaseHistoryScreen({ projectId, onBack, onViewDetail }: {
+  projectId: string;
+  onBack: () => void;
+  onViewDetail: (release: LibraryVersion) => void;
+}) {
+  const [releases, setReleases] = React.useState<LibraryVersion[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    (async () => {
+      const all = await getLibraryVersionHistory(projectId);
+      setReleases(all);
+      setLoading(false);
+    })();
+  }, [projectId]);
+
+  if (loading) return <ProgressBar percent={50} message="Loading releases..." />;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 20px', borderBottom: '1px solid var(--border)',
+      }}>
+        <button style={{ ...s.btnGhost, color: 'var(--accent)' }} onClick={onBack}>{'< back'}</button>
+        <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>releases</span>
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <span style={s.sectionTitle}>// library_releases</span>
+
+        {releases.length === 0 && (
+          <div style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', padding: 20, textAlign: 'center' }}>
+            no releases yet
+          </div>
+        )}
+
+        {releases.map(release => (
+          <div key={release.id} style={{ ...s.card, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>v{release.version}</span>
+                <BumpBadge bump={release.bump_type} />
+              </div>
+              <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                {formatDate(release.published_at)} · {release.published_by}
+              </span>
+            </div>
+
+            {release.changelog_message && (
+              <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                {release.changelog_message}
+              </span>
+            )}
+
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button style={s.btnGhost} onClick={() => onViewDetail(release)}>view details</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Library Release Detail ───────────────────
+
+function LibraryReleaseDetailScreen({ release, projectId, onBack }: {
+  release: LibraryVersion;
+  projectId: string;
+  onBack: () => void;
+}) {
+  const [changelog, setChangelog] = React.useState<LibraryChangelogEntry[]>([]);
+  const [components, setComponents] = React.useState<LibraryVersionComponent[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    (async () => {
+      const [entries, comps] = await Promise.all([
+        getLibraryVersionChangelog(release.id, projectId),
+        getLibraryVersionComponents(release.id),
+      ]);
+      setChangelog(entries);
+      setComponents(comps);
+      setLoading(false);
+    })();
+  }, [release.id, projectId]);
+
+  if (loading) return <ProgressBar percent={50} message="Loading release details..." />;
+
+  const changeColors: Record<string, { bg: string; fg: string; prefix: string }> = {
+    added: { bg: '#10B98110', fg: 'var(--diff-added)', prefix: '+' },
+    updated: { bg: '#F59E0B10', fg: 'var(--diff-changed)', prefix: '~' },
+    removed: { bg: '#EF444410', fg: 'var(--diff-removed)', prefix: '-' },
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 20px', borderBottom: '1px solid var(--border)',
+      }}>
+        <button style={{ ...s.btnGhost, color: 'var(--accent)' }} onClick={onBack}>{'< back'}</button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>v{release.version}</span>
+          <BumpBadge bump={release.bump_type} />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Release info */}
+        <div style={{
+          display: 'flex', gap: 12, alignItems: 'center', padding: 12,
+          background: '#10B98115', border: '1px solid var(--accent-dim)',
+        }}>
+          <span style={{ color: 'var(--accent)', fontSize: 18 }}>&#10003;</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <span style={{ ...s.heading, fontSize: 12, color: 'var(--accent)' }}>published</span>
+            <span style={{ ...s.body, fontSize: 10, color: 'var(--text-secondary)' }}>
+              v{release.version} ({release.bump_type}) · {formatDate(release.published_at)} · {release.published_by}
+            </span>
+          </div>
+        </div>
+
+        {/* Release notes */}
+        {release.changelog_message && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={s.sectionTitle}>// release notes</span>
+            <div style={{ border: '1px solid var(--border)', padding: 12 }}>
+              <span style={{ ...s.body, fontSize: 11, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                {release.changelog_message}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Component changelog */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={s.sectionTitle}>// component changes ({changelog.length})</span>
+          {changelog.length === 0 ? (
+            <div style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', padding: 8 }}>
+              first release — all components included
+            </div>
+          ) : (
+            <div style={{ border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 2, padding: 8 }}>
+              {changelog.map((entry, i) => {
+                const c = changeColors[entry.change_type];
+                let text = entry.component_name;
+                if (entry.change_type === 'updated' && entry.from_version && entry.to_version) {
+                  text += `: v${entry.from_version} → v${entry.to_version}`;
+                } else if (entry.to_version) {
+                  text += ` v${entry.to_version}`;
+                }
+                if (entry.changelog_message) {
+                  text += ` — ${entry.changelog_message}`;
+                }
+                return (
+                  <div key={i} style={{
+                    display: 'flex', gap: 8, alignItems: 'flex-start', padding: '4px 8px',
+                    background: c.bg,
+                  }}>
+                    <span style={{ ...s.heading, fontSize: 11, color: c.fg, flexShrink: 0 }}>{c.prefix}</span>
+                    <span style={{ ...s.body, fontSize: 11, color: c.fg, wordBreak: 'break-all', flex: 1 }}>
+                      {text}
+                    </span>
+                    {entry.bump_type && <BumpBadge bump={entry.bump_type} />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* All components in this release */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <span style={s.sectionTitle}>// included components ({components.length})</span>
+          <div style={{ border: '1px solid var(--border)', padding: '8px 12px' }}>
+            {components.map((comp, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '4px 0' }}>
+                <span style={{ ...s.body, fontSize: 11, color: 'var(--text-primary)' }}>{comp.component_name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ──────────────────────────────────────────────
 
 type View =
@@ -1616,7 +2014,10 @@ type View =
   | { screen: 'library' }
   | { screen: 'detail'; comp: ExtractedComponent }
   | { screen: 'detail-version'; version: ComponentVersion; comp: ExtractedComponent }
-  | { screen: 'history'; comp: ExtractedComponent };
+  | { screen: 'history'; comp: ExtractedComponent }
+  | { screen: 'library-release' }
+  | { screen: 'library-release-history' }
+  | { screen: 'library-release-detail'; release: LibraryVersion };
 
 function App() {
   const [view, setView] = React.useState<View>({ screen: 'auth' });
@@ -1733,6 +2134,8 @@ function App() {
               onViewHistory={(comp) => setView({ screen: 'history', comp })}
               onChangeLibrary={handleChangeLibrary}
               onDisconnect={handleDisconnect}
+              onRelease={() => setView({ screen: 'library-release' })}
+              onReleaseHistory={() => setView({ screen: 'library-release-history' })}
             />
           </div>
         )}
@@ -1764,6 +2167,31 @@ function App() {
             projectId={projectId}
             onBack={() => setView({ screen: 'library' })}
             onViewDetail={(v) => setView({ screen: 'detail-version', version: v, comp: view.comp })}
+          />
+        )}
+
+        {view.screen === 'library-release' && projectId && (
+          <LibraryReleaseScreen
+            projectId={projectId}
+            userName={userName}
+            onBack={() => setView({ screen: 'library' })}
+            onPublished={(release) => setView({ screen: 'library-release-detail', release })}
+          />
+        )}
+
+        {view.screen === 'library-release-history' && projectId && (
+          <LibraryReleaseHistoryScreen
+            projectId={projectId}
+            onBack={() => setView({ screen: 'library' })}
+            onViewDetail={(release) => setView({ screen: 'library-release-detail', release })}
+          />
+        )}
+
+        {view.screen === 'library-release-detail' && projectId && (
+          <LibraryReleaseDetailScreen
+            release={view.release}
+            projectId={projectId}
+            onBack={() => setView({ screen: 'library-release-history' })}
           />
         )}
       </div>
