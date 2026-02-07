@@ -1,15 +1,24 @@
-import { Scope, ExtractedComponent, UIMessage, CodeMessage } from './types';
+import { ExtractedComponent, LocalComponentGroup, UIMessage, CodeMessage } from './types';
 
 // Show UI
 figma.showUI(__html__, { width: 480, height: 640 });
 figma.skipInvisibleInstanceChildren = true;
 
-// Send initial state
-function sendInit() {
+// Send initial state (with saved OAuth settings from clientStorage)
+async function sendInit() {
+  const [savedToken, savedFileKey, savedUserName] = await Promise.all([
+    figma.clientStorage.getAsync('figma_token').catch(() => null),
+    figma.clientStorage.getAsync('figma_file_key').catch(() => null),
+    figma.clientStorage.getAsync('figma_user_name').catch(() => null),
+  ]);
+
   const msg: CodeMessage = {
     type: 'init',
     userName: figma.currentUser?.name || 'unknown',
     fileKey: figma.root.name,
+    savedToken: savedToken || undefined,
+    savedFileKey: savedFileKey || undefined,
+    savedUserName: savedUserName || undefined,
   };
   figma.ui.postMessage(msg);
 }
@@ -56,97 +65,42 @@ function collectBoundVariables(node: SceneNode): Record<string, any> {
   return vars;
 }
 
-// Discover components from scope
-function getComponentsFromScope(scope: Scope): (ComponentNode | ComponentSetNode)[] {
-  const nodes = scope === 'page'
-    ? figma.currentPage.findAllWithCriteria({ types: ['COMPONENT', 'COMPONENT_SET'] })
-    : (() => {
-        const results: (ComponentNode | ComponentSetNode)[] = [];
-        for (const sel of figma.currentPage.selection) {
-          if (sel.type === 'COMPONENT' || sel.type === 'COMPONENT_SET') {
-            results.push(sel);
-          }
-          if ('findAllWithCriteria' in sel) {
-            const found = (sel as FrameNode).findAllWithCriteria({ types: ['COMPONENT', 'COMPONENT_SET'] });
-            results.push(...found);
-          }
-        }
-        return results;
-      })();
-
-  // Deduplicate: prefer COMPONENT_SET over its child COMPONENTs
-  const setIds = new Set<string>();
-  const filtered: (ComponentNode | ComponentSetNode)[] = [];
-
-  // First pass: collect all component set ids
-  for (const node of nodes) {
-    if (node.type === 'COMPONENT_SET') {
-      setIds.add(node.id);
-    }
-  }
-
-  // Second pass: skip COMPONENTs whose parent is an already-included COMPONENT_SET
-  for (const node of nodes) {
-    if (node.type === 'COMPONENT' && node.parent?.type === 'COMPONENT_SET' && setIds.has(node.parent.id)) {
-      continue; // parent set is already included
-    }
-    filtered.push(node);
-  }
-
-  return filtered;
-}
-
-// Extract all components
-async function extractComponents(scope: Scope) {
+// Extract specific components by node IDs (used after library list selection)
+async function extractSelected(nodeIds: string[]) {
   try {
-    sendProgress('Discovering components...', 5);
-    const components = getComponentsFromScope(scope);
-
-    if (components.length === 0) {
-      sendError('No components found in the selected scope.');
-      return;
-    }
-
-    sendProgress(`Found ${components.length} components`, 10);
+    sendProgress('Starting extraction...', 5);
     const extracted: ExtractedComponent[] = [];
 
-    for (let i = 0; i < components.length; i++) {
-      const node = components[i];
-      const percent = 10 + Math.round((i / components.length) * 80);
-      const name = getComponentName(node);
-      sendProgress(`Extracting: ${name} (${i + 1}/${components.length})`, percent);
+    for (let i = 0; i < nodeIds.length; i++) {
+      const node = await figma.getNodeByIdAsync(nodeIds[i]);
+      if (!node || (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET')) continue;
+
+      const compNode = node as ComponentNode | ComponentSetNode;
+      const name = getComponentName(compNode);
+      const percent = 5 + Math.round((i / nodeIds.length) * 90);
+      sendProgress(`Extracting: ${name} (${i + 1}/${nodeIds.length})`, percent);
 
       try {
-        // Export JSON snapshot
-        const snapshot = await node.exportAsync({ format: 'JSON_REST_V1' } as any);
-
-        // Export PNG thumbnail
-        const pngBytes = await node.exportAsync({
+        const snapshot = await compNode.exportAsync({ format: 'JSON_REST_V1' } as any);
+        const pngBytes = await compNode.exportAsync({
           format: 'PNG',
           constraint: { type: 'SCALE', value: 2 },
         });
 
-        // Get property definitions (only on COMPONENT_SET or standalone COMPONENT)
         let propertyDefinitions: any = null;
-        if (node.type === 'COMPONENT_SET') {
-          propertyDefinitions = node.componentPropertyDefinitions;
-        } else if (node.type === 'COMPONENT' && node.parent?.type !== 'COMPONENT_SET') {
-          propertyDefinitions = node.componentPropertyDefinitions;
+        if (compNode.type === 'COMPONENT_SET') {
+          propertyDefinitions = compNode.componentPropertyDefinitions;
+        } else if (compNode.type === 'COMPONENT' && compNode.parent?.type !== 'COMPONENT_SET') {
+          propertyDefinitions = compNode.componentPropertyDefinitions;
         }
 
-        // Collect bound variables
-        const variablesUsed = collectBoundVariables(node);
-
-        // Get component key for stable identification
-        const key = node.key;
-
-        // Get publish status
-        const publishStatus = await node.getPublishStatusAsync();
+        const variablesUsed = collectBoundVariables(compNode);
+        const publishStatus = await compNode.getPublishStatusAsync();
 
         extracted.push({
-          key,
+          key: compNode.key,
           name,
-          nodeId: node.id,
+          nodeId: compNode.id,
           snapshot,
           propertyDefinitions,
           variablesUsed,
@@ -157,7 +111,6 @@ async function extractComponents(scope: Scope) {
         console.error(`Failed to extract ${name}:`, err);
       }
 
-      // Yield to UI
       await new Promise(r => setTimeout(r, 0));
     }
 
@@ -228,11 +181,81 @@ async function navigateToNode(nodeId: string) {
   }
 }
 
+// Save OAuth settings to clientStorage
+async function saveSettings(token: string, fileKey: string, userName: string) {
+  await Promise.all([
+    figma.clientStorage.setAsync('figma_token', token),
+    figma.clientStorage.setAsync('figma_file_key', fileKey),
+    figma.clientStorage.setAsync('figma_user_name', userName),
+  ]);
+}
+
+// Clear stored OAuth settings
+async function clearSettings() {
+  await Promise.all([
+    figma.clientStorage.deleteAsync('figma_token'),
+    figma.clientStorage.deleteAsync('figma_file_key'),
+    figma.clientStorage.deleteAsync('figma_user_name'),
+  ]);
+}
+
+// Scan local components and component sets from the document
+async function scanLocalComponents() {
+  try {
+    sendProgress('Loading pages...', 10);
+    await figma.loadAllPagesAsync();
+
+    sendProgress('Scanning components...', 20);
+    const groups: LocalComponentGroup[] = [];
+
+    // Find all component sets (these contain variants)
+    const componentSets = figma.root.findAllWithCriteria({ types: ['COMPONENT_SET'] });
+    const variantNodeIds = new Set<string>();
+
+    for (const cs of componentSets) {
+      const csNode = cs as ComponentSetNode;
+      const variants = csNode.children.filter(c => c.type === 'COMPONENT') as ComponentNode[];
+      variants.forEach(v => variantNodeIds.add(v.id));
+
+      groups.push({
+        name: csNode.name,
+        nodeId: csNode.id,
+        key: csNode.key,
+        thumbnailBytes: [],
+        variantCount: variants.length,
+        variants: variants.map(v => ({ name: v.name, nodeId: v.id, key: v.key })),
+      });
+    }
+
+    // Find standalone components (not inside a component set)
+    const allComponents = figma.root.findAllWithCriteria({ types: ['COMPONENT'] });
+    const standalones = allComponents.filter(c => !variantNodeIds.has(c.id)) as ComponentNode[];
+
+    for (const comp of standalones) {
+      groups.push({
+        name: comp.name,
+        nodeId: comp.id,
+        key: comp.key,
+        thumbnailBytes: [],
+        variantCount: 1,
+        variants: [{ name: comp.name, nodeId: comp.id, key: comp.key }],
+      });
+    }
+
+    groups.sort((a, b) => a.name.localeCompare(b.name));
+    sendProgress('Scan complete!', 100);
+    const msg: CodeMessage = { type: 'local-components', groups };
+    figma.ui.postMessage(msg);
+  } catch (error) {
+    sendError(`Scan failed: ${error}`);
+  }
+}
+
 // Handle messages from UI
 figma.ui.onmessage = async (msg: UIMessage) => {
   switch (msg.type) {
-    case 'extract-components':
-      await extractComponents(msg.scope);
+    case 'extract-selected':
+      await extractSelected(msg.nodeIds);
       break;
     case 'extract-single':
       await extractSingle(msg.nodeId);
@@ -240,8 +263,26 @@ figma.ui.onmessage = async (msg: UIMessage) => {
     case 'navigate':
       await navigateToNode(msg.nodeId);
       break;
+    case 'save-settings':
+      await saveSettings(msg.token, msg.fileKey, msg.userName);
+      break;
+    case 'load-settings': {
+      const [token, fileKey, userName] = await Promise.all([
+        figma.clientStorage.getAsync('figma_token').catch(() => null),
+        figma.clientStorage.getAsync('figma_file_key').catch(() => null),
+        figma.clientStorage.getAsync('figma_user_name').catch(() => null),
+      ]);
+      const response: CodeMessage = { type: 'settings-loaded', token, fileKey, userName };
+      figma.ui.postMessage(response);
+      break;
+    }
+    case 'clear-settings':
+      await clearSettings();
+      break;
+    case 'scan-local-components':
+      await scanLocalComponents();
+      break;
     case 'reconstruct':
-      // Stub for future reconstruction feature
       sendError('Reconstruction not yet implemented.');
       break;
   }

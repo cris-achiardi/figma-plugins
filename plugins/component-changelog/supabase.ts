@@ -9,12 +9,14 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // --- Projects ---
 
 export async function getOrCreateProject(name: string, figmaFileKey: string): Promise<Project> {
-  // Try to find existing project by file key
+  // Try to find existing project by file key (limit 1 to handle duplicates)
   const { data: existing } = await supabase
     .from('projects')
     .select('*')
     .eq('figma_file_key', figmaFileKey)
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
 
   if (existing) return existing as Project;
 
@@ -172,7 +174,7 @@ export async function getLatestPublished(
     .eq('status', 'published')
     .order('published_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   return (data as ComponentVersion) || null;
 }
@@ -189,7 +191,7 @@ export async function getActiveDraft(
     .in('status', ['draft', 'in_review', 'approved'])
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   return (data as ComponentVersion) || null;
 }
@@ -249,6 +251,35 @@ export async function getAuditLog(versionId: string) {
 
   if (error) throw new Error(`Failed to get audit log: ${error.message}`);
   return data || [];
+}
+
+// --- Figma Token Management ---
+
+export async function getStoredToken(figmaUserId: string): Promise<{
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+} | null> {
+  const { data } = await supabase
+    .from('figma_tokens')
+    .select('access_token, refresh_token, expires_at')
+    .eq('figma_user_id', figmaUserId)
+    .maybeSingle();
+
+  return data;
+}
+
+export async function refreshFigmaToken(figmaUserId: string): Promise<string | null> {
+  const stored = await getStoredToken(figmaUserId);
+  if (!stored) return null;
+
+  // Call Figma token refresh endpoint via our edge function would be complex;
+  // for now we just check if the token is still valid
+  const isExpired = new Date(stored.expires_at) < new Date();
+  if (!isExpired) return stored.access_token;
+
+  // Token is expired — user needs to re-authenticate
+  return null;
 }
 
 // --- Helpers ---

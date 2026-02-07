@@ -2,7 +2,31 @@
 export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published';
 export type BumpType = 'patch' | 'minor' | 'major';
 export type AuditAction = 'created' | 'submitted_for_review' | 'approved' | 'published' | 'rejected';
-export type Scope = 'page' | 'selection';
+
+// OAuth / Figma user
+export interface FigmaUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+// Library info from REST API
+export interface LibraryInfo {
+  fileKey: string;
+  name: string;
+  componentCount: number;
+}
+
+// Library component from REST API
+export interface LibraryComponent {
+  key: string;
+  name: string;
+  description: string;
+  nodeId: string;
+  thumbnailUrl: string;
+  componentSetId: string | null;
+  componentSetName: string | null;
+}
 
 // Data models (match Supabase schema)
 export interface ComponentVersion {
@@ -42,7 +66,19 @@ export interface Project {
   created_at: string;
 }
 
-// Extracted component data (from Figma sandbox)
+// Grouped component (variants grouped by component set)
+export interface ComponentGroup {
+  /** Display name (base name before " / " or standalone name) */
+  baseName: string;
+  /** All variants in this group */
+  variants: LibraryComponent[];
+  /** Thumbnail from the first variant */
+  thumbnailUrl: string;
+  /** The componentSetId (null for standalone components) */
+  componentSetId: string | null;
+}
+
+// Extracted component data (from Figma sandbox via Plugin API)
 export interface ExtractedComponent {
   key: string;
   name: string;
@@ -54,17 +90,38 @@ export interface ExtractedComponent {
   publishStatus: string;
 }
 
+// Local component scan result from Plugin API
+export interface LocalComponentGroup {
+  /** Component set name (or standalone component name) */
+  name: string;
+  /** Node ID of the component set (or standalone component) */
+  nodeId: string;
+  /** Component key */
+  key: string;
+  /** Thumbnail as PNG bytes */
+  thumbnailBytes: number[];
+  /** Number of variants (1 for standalone) */
+  variantCount: number;
+  /** Variant names (for component sets) */
+  variants: { name: string; nodeId: string; key: string }[];
+}
+
 // Messages: UI -> Code
 export type UIMessage =
-  | { type: 'extract-components'; scope: Scope }
+  | { type: 'extract-selected'; nodeIds: string[] }
   | { type: 'extract-single'; nodeId: string }
   | { type: 'navigate'; nodeId: string }
-  | { type: 'reconstruct'; snapshot: any };
+  | { type: 'save-settings'; token: string; fileKey: string; userName: string }
+  | { type: 'load-settings' }
+  | { type: 'clear-settings' }
+  | { type: 'reconstruct'; snapshot: any }
+  | { type: 'scan-local-components' };
 
 // Messages: Code -> UI
 export type CodeMessage =
-  | { type: 'init'; userName: string; fileKey: string }
+  | { type: 'init'; userName: string; fileKey: string; savedToken?: string; savedFileKey?: string; savedUserName?: string }
+  | { type: 'settings-loaded'; token: string | null; fileKey: string | null; userName: string | null }
   | { type: 'extraction-complete'; components: ExtractedComponent[] }
   | { type: 'extraction-progress'; message: string; percent: number }
-  | { type: 'reconstruction-complete'; nodeId: string }
+  | { type: 'local-components'; groups: LocalComponentGroup[] }
   | { type: 'error'; message: string };

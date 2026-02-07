@@ -4,7 +4,7 @@
   "description": "Version-controlled component changelog with Supabase-backed approval pipeline",
   "main": "code.js",
   "scripts": {
-    "build": "npm run build:code && npm run build:ui && npm run inline-ui",
+    "build": "npx esbuild code.ts --bundle --outfile=code.js --target=es2017 && npx esbuild ui.tsx --bundle --outfile=ui.js --target=es2017 && node inline-ui.js",
     "build:code": "esbuild code.ts --bundle --outfile=code.js --target=es2017",
     "build:ui": "esbuild ui.tsx --bundle --outfile=ui.js --target=es2017",
     "inline-ui": "node inline-ui.js",

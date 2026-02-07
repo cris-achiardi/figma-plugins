@@ -2,17 +2,26 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { diff as deepDiff } from 'deep-diff';
 import type {
-  Scope, VersionStatus, BumpType, AuditAction,
-  ComponentVersion, AuditEntry, ExtractedComponent,
+  VersionStatus, BumpType,
+  ComponentVersion, AuditEntry, ExtractedComponent, LibraryComponent, ComponentGroup,
+  LocalComponentGroup,
   UIMessage, CodeMessage,
 } from './types';
 import {
+  supabase,
   getOrCreateProject, createDraft, submitForReview,
   approveVersion, rejectVersion, publishVersion,
   getVersionHistory, getLatestPublished, getActiveDraft,
   getVersionById, uploadThumbnail, getAuditLog,
   computeVersion,
 } from './supabase';
+import { getMe, getFileComponents, getLibraryInfo } from './figma-api';
+
+// ── Constants ────────────────────────────────────────
+
+const SUPABASE_URL = 'https://nwweqcjiklzmlmvbfjkt.supabase.co';
+const FIGMA_CLIENT_ID = 'ToE4onWa5EXpY13cDUgd5L';
+const OAUTH_CALLBACK_URL = `${SUPABASE_URL}/functions/v1/figma-oauth-callback`;
 
 // ── Helpers ──────────────────────────────────────────
 
@@ -44,6 +53,16 @@ function postToCode(msg: UIMessage) {
   parent.postMessage({ pluginMessage: msg }, '*');
 }
 
+// Extract file key from a Figma URL or raw key
+function parseFileKey(input: string): string {
+  const trimmed = input.trim();
+  // Match figma.com/design/KEY/... or figma.com/file/KEY/...
+  const match = trimmed.match(/figma\.com\/(?:design|file)\/([a-zA-Z0-9]+)/);
+  if (match) return match[1];
+  // Already a raw key
+  return trimmed;
+}
+
 // Build human-readable diff lines from two JSON snapshots
 interface DiffLine { type: 'added' | 'changed' | 'removed'; text: string }
 
@@ -70,7 +89,7 @@ function buildDiffLines(oldSnap: any, newSnap: any): DiffLine[] {
         break;
     }
   }
-  return lines.slice(0, 50); // cap at 50 lines
+  return lines.slice(0, 50);
 }
 
 // ── Shared Styles ────────────────────────────────────
@@ -107,6 +126,11 @@ const s = {
     background: 'none', color: 'var(--diff-removed)',
     border: '1px solid var(--diff-removed)', padding: '8px 16px', cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+  } as React.CSSProperties,
+  input: {
+    fontFamily: 'var(--font-body)', fontSize: 12, background: 'var(--bg-elevated)',
+    border: '1px solid var(--border)', color: 'var(--text-primary)',
+    padding: '10px 12px', outline: 'none', width: '100%',
   } as React.CSSProperties,
 };
 
@@ -224,46 +248,312 @@ function ProgressBar({ percent, message }: { percent: number; message: string })
   );
 }
 
-// ── Screen: Component List ───────────────────────────
+// ── Screen: Auth ─────────────────────────────────────
 
-function ComponentListScreen({ components, userName, fileKey, onViewDetail, onViewHistory }: {
-  components: ExtractedComponent[];
-  userName: string;
+function AuthScreen({ onAuthenticated }: {
+  onAuthenticated: (token: string, userName: string) => void;
+}) {
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleConnect = () => {
+    setError(null);
+    const state = Math.random().toString(36).slice(2);
+    const authUrl = `https://www.figma.com/oauth?client_id=${FIGMA_CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_CALLBACK_URL)}&scope=current_user:read,file_content:read,file_metadata:read,file_versions:read,file_comments:read,file_comments:write,file_dev_resources:read,file_dev_resources:write,library_assets:read,library_content:read,team_library_content:read,projects:read,webhooks:read,webhooks:write&state=${state}&response_type=code`;
+
+    window.open(authUrl, 'figma-oauth', 'width=500,height=700');
+
+    // Poll oauth_sessions table for the result
+    let attempts = 0;
+    const maxAttempts = 60; // 2 minutes at 2s intervals
+    const poll = setInterval(async () => {
+      attempts++;
+      if (attempts > maxAttempts) {
+        clearInterval(poll);
+        setError('Authentication timed out. Please try again.');
+        return;
+      }
+      try {
+        const { data } = await supabase
+          .from('oauth_sessions')
+          .select('access_token, figma_user_id, user_name')
+          .eq('state', state)
+          .single();
+
+        if (data) {
+          clearInterval(poll);
+          // Clean up the session row
+          await supabase.from('oauth_sessions').delete().eq('state', state);
+          onAuthenticated(data.access_token, data.user_name || 'unknown');
+        }
+      } catch {
+        // Not found yet, keep polling
+      }
+    }, 2000);
+  };
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100%', gap: 24, padding: 40,
+    }}>
+      <span style={{ ...s.heading, fontSize: 16, color: 'var(--accent)' }}>{'>'}</span>
+      <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-primary)' }}>component_changelog</span>
+      <span style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
+        connect your Figma account to track<br />
+        component versions across libraries
+      </span>
+
+      <button style={{ ...s.btnPrimary, padding: '12px 32px' }} onClick={handleConnect}>
+        $ connect_with_figma
+      </button>
+
+      {error && (
+        <span style={{ ...s.body, fontSize: 11, color: 'var(--diff-removed)', textAlign: 'center' }}>
+          {error}
+        </span>
+      )}
+
+      <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+        grants read-only access to your files
+      </span>
+    </div>
+  );
+}
+
+// ── Screen: Library Setup ────────────────────────────
+
+function LibrarySetupScreen({ token, onLibraryConnected, onDisconnect }: {
+  token: string;
+  onLibraryConnected: (fileKey: string, libraryName: string) => void;
+  onDisconnect: () => void;
+}) {
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const handleConnect = async () => {
+    const fileKey = parseFileKey(input);
+    if (!fileKey) {
+      setError('Enter a valid Figma file URL or key.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const info = await getLibraryInfo(fileKey, token);
+      onLibraryConnected(fileKey, info.name);
+    } catch (err: any) {
+      setError(err.message || 'Failed to connect to library.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100%',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '14px 20px', borderBottom: '1px solid var(--border)',
+      }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ ...s.heading, fontSize: 16, color: 'var(--accent)' }}>{'>'}</span>
+          <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-primary)' }}>connect_library</span>
+        </div>
+        <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-tertiary)' }} onClick={onDisconnect}>
+          disconnect
+        </button>
+      </div>
+
+      {/* Body */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', gap: 20, padding: 40,
+      }}>
+        <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6 }}>
+          paste a Figma library file URL or key<br />
+          to connect and track its components
+        </span>
+
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleConnect()}
+            placeholder="figma.com/design/abc123... or file key"
+            style={s.input}
+          />
+
+          <button
+            style={{ ...s.btnPrimary, width: '100%', opacity: loading || !input.trim() ? 0.5 : 1 }}
+            onClick={handleConnect}
+            disabled={loading || !input.trim()}
+          >
+            {loading ? 'connecting...' : '$ connect_library'}
+          </button>
+        </div>
+
+        {error && (
+          <span style={{ ...s.body, fontSize: 11, color: 'var(--diff-removed)', textAlign: 'center' }}>
+            {error}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Screen: Library Components ───────────────────────
+
+function LibraryComponentsScreen({
+  token, fileKey, libraryName, userName,
+  onViewDetail, onViewHistory, onChangeLibrary, onDisconnect,
+}: {
+  token: string;
   fileKey: string;
+  libraryName: string;
+  userName: string;
   onViewDetail: (comp: ExtractedComponent) => void;
   onViewHistory: (comp: ExtractedComponent) => void;
+  onChangeLibrary: () => void;
+  onDisconnect: () => void;
 }) {
-  const [scope, setScope] = React.useState<Scope>('page');
+  const [localGroups, setLocalGroups] = React.useState<LocalComponentGroup[]>([]);
+  const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
   const [search, setSearch] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [projectId, setProjectId] = React.useState<string | null>(null);
+  const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [extracting, setExtracting] = React.useState(false);
   const [progress, setProgress] = React.useState({ percent: 0, message: '' });
-  const [projectId, setProjectId] = React.useState<string | null>(null);
+  const [extracted, setExtracted] = React.useState<ExtractedComponent[]>([]);
   const [versionMap, setVersionMap] = React.useState<Record<string, ComponentVersion | null>>({});
   const [draftMap, setDraftMap] = React.useState<Record<string, ComponentVersion | null>>({});
 
-  // Init project on mount
+  // Scan local components via Plugin API
   React.useEffect(() => {
-    getOrCreateProject(fileKey, fileKey).then(p => setProjectId(p.id)).catch(console.error);
-  }, [fileKey]);
+    (async () => {
+      try {
+        setLoading(true);
+        const project = await getOrCreateProject(libraryName, fileKey);
+        setProjectId(project.id);
+        // Request scan from code.ts
+        postToCode({ type: 'scan-local-components' });
+      } catch (err: any) {
+        setError(err.message || 'Failed to initialize.');
+        setLoading(false);
+      }
+    })();
+  }, [fileKey, token]);
 
-  // Fetch version data when components change
+  // Listen for local-components message from code.ts
   React.useEffect(() => {
-    if (!projectId || components.length === 0) return;
+    const handler = (e: MessageEvent) => {
+      const msg = e.data.pluginMessage as CodeMessage;
+      if (!msg) return;
+      if (msg.type === 'local-components') {
+        setLocalGroups(msg.groups);
+        // Select all by default (use the group key = component set key or standalone key)
+        setSelected(new Set(msg.groups.map(g => g.key)));
+        setLoading(false);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  // Fetch version data when we have projectId and groups
+  React.useEffect(() => {
+    if (!projectId || localGroups.length === 0) return;
     (async () => {
       const vm: Record<string, ComponentVersion | null> = {};
       const dm: Record<string, ComponentVersion | null> = {};
-      for (const c of components) {
-        vm[c.key] = await getLatestPublished(c.key, projectId).catch(() => null);
-        dm[c.key] = await getActiveDraft(c.key, projectId).catch(() => null);
+      for (const g of localGroups) {
+        vm[g.key] = await getLatestPublished(g.key, projectId).catch(() => null);
+        dm[g.key] = await getActiveDraft(g.key, projectId).catch(() => null);
       }
       setVersionMap(vm);
       setDraftMap(dm);
     })();
-  }, [projectId, components]);
+  }, [projectId, localGroups]);
+
+  // Fetch version data for extracted components too
+  React.useEffect(() => {
+    if (!projectId || extracted.length === 0) return;
+    (async () => {
+      const vm: Record<string, ComponentVersion | null> = {};
+      const dm: Record<string, ComponentVersion | null> = {};
+      for (const c of extracted) {
+        vm[c.key] = await getLatestPublished(c.key, projectId).catch(() => null);
+        dm[c.key] = await getActiveDraft(c.key, projectId).catch(() => null);
+      }
+      setVersionMap(prev => ({ ...prev, ...vm }));
+      setDraftMap(prev => ({ ...prev, ...dm }));
+    })();
+  }, [projectId, extracted]);
+
+  // Listen for extraction messages from code.ts
+  React.useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const msg = e.data.pluginMessage as CodeMessage;
+      if (!msg) return;
+      if (msg.type === 'extraction-progress') {
+        setProgress({ percent: msg.percent, message: msg.message });
+      }
+      if (msg.type === 'extraction-complete') {
+        setExtracting(false);
+        setExtracted(msg.components);
+      }
+      if (msg.type === 'error') {
+        setExtracting(false);
+        setError(msg.message);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
+
+  const toggleSelect = (key: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const allKeys = localGroups.map(g => g.key);
+    const allSelected = allKeys.every(k => selected.has(k));
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(allKeys));
+    }
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleExtract = () => {
+    const nodeIds = localGroups
+      .filter(g => selected.has(g.key))
+      .map(g => g.nodeId);
+    if (nodeIds.length === 0) return;
     setExtracting(true);
-    postToCode({ type: 'extract-components', scope });
+    setError(null);
+    postToCode({ type: 'extract-selected', nodeIds });
   };
 
   const handleCreateDraft = async (comp: ExtractedComponent) => {
@@ -272,13 +562,11 @@ function ComponentListScreen({ components, userName, fileKey, onViewDetail, onVi
       const latest = versionMap[comp.key];
       const diffLines = latest ? deepDiff(latest.snapshot, comp.snapshot) : null;
 
-      // Upload thumbnail
       const bytes = new Uint8Array(comp.thumbnailBytes);
       const thumbPath = `${projectId}/${comp.key}/${Date.now()}.png`;
-      let thumbnailUrl: string | null = null;
-      try { thumbnailUrl = await uploadThumbnail(bytes, thumbPath); } catch { /* ok */ }
+      try { await uploadThumbnail(bytes, thumbPath); } catch { /* ok */ }
 
-      const draft = await createDraft({
+      await createDraft({
         projectId,
         componentKey: comp.key,
         componentName: comp.name,
@@ -289,6 +577,8 @@ function ComponentListScreen({ components, userName, fileKey, onViewDetail, onVi
         createdBy: userName,
       });
 
+      // Refresh draft map
+      const draft = await getActiveDraft(comp.key, projectId);
       setDraftMap(prev => ({ ...prev, [comp.key]: draft }));
       onViewDetail(comp);
     } catch (err: any) {
@@ -296,56 +586,93 @@ function ComponentListScreen({ components, userName, fileKey, onViewDetail, onVi
     }
   };
 
-  const filtered = components.filter(c =>
-    !search || c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  if (loading) return <ProgressBar percent={30} message="Loading library components..." />;
+  if (extracting) return <ProgressBar percent={progress.percent} message={progress.message} />;
 
-  // Listen to progress from code.ts
-  React.useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      const msg = e.data.pluginMessage as CodeMessage;
-      if (!msg) return;
-      if (msg.type === 'extraction-progress') {
-        setProgress({ percent: msg.percent, message: msg.message });
-      }
-      if (msg.type === 'extraction-complete') {
-        setExtracting(false);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
+  const hasExtracted = extracted.length > 0;
 
-  if (extracting) {
-    return <ProgressBar percent={progress.percent} message={progress.message} />;
-  }
+  const searchLower = search.toLowerCase();
+  const filteredGroups = localGroups.filter(g => {
+    if (!search) return true;
+    if (g.name.toLowerCase().includes(searchLower)) return true;
+    return g.variants.some(v => v.name.toLowerCase().includes(searchLower));
+  });
+
+  const totalVariants = filteredGroups.reduce((sum, g) => sum + g.variantCount, 0);
+
+  const filteredExtracted = hasExtracted
+    ? extracted.filter(c => !search || c.name.toLowerCase().includes(searchLower))
+    : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Toolbar */}
+      {/* Header */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-        padding: '10px 20px', borderBottom: '1px solid var(--border)',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '12px 20px', borderBottom: '1px solid var(--border)',
       }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          border: '1px solid var(--border)', padding: '6px 10px',
-        }}>
-          <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>scope:</span>
-          <select
-            value={scope}
-            onChange={e => setScope(e.target.value as Scope)}
-            style={{
-              ...s.label, background: 'none', color: 'var(--text-primary)', border: 'none',
-              cursor: 'pointer', outline: 'none',
-            }}
-          >
-            <option value="page">page</option>
-            <option value="selection">selection</option>
-          </select>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ ...s.heading, fontSize: 16, color: 'var(--accent)' }}>{'>'}</span>
+          <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>{libraryName}</span>
         </div>
-        <button style={s.btnPrimary} onClick={handleExtract}>$ extract_all</button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)' }}>{userName}</span>
+          <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-tertiary)', padding: '4px 6px' }} onClick={onChangeLibrary}>
+            switch
+          </button>
+          <button style={{ ...s.btnGhost, fontSize: 10, color: 'var(--diff-removed)', padding: '4px 6px' }} onClick={onDisconnect}>
+            logout
+          </button>
+        </div>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          padding: '8px 20px', background: '#EF444415', borderBottom: '1px solid var(--diff-removed)',
+          ...s.body, fontSize: 11, color: 'var(--diff-removed)',
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      {!hasExtracted && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          padding: '8px 20px', borderBottom: '1px solid var(--border)',
+        }}>
+          <span style={{ ...s.label, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+            // {filteredGroups.length} components ({totalVariants} variants)
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button style={{ ...s.btnGhost, fontSize: 10 }} onClick={toggleAll}>
+              {localGroups.every(g => selected.has(g.key)) ? 'deselect all' : 'select all'}
+            </button>
+            <button
+              style={{ ...s.btnPrimary, opacity: selected.size === 0 ? 0.4 : 1 }}
+              onClick={handleExtract}
+              disabled={selected.size === 0}
+            >
+              $ extract ({selected.size})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {hasExtracted && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          padding: '8px 20px', borderBottom: '1px solid var(--border)',
+        }}>
+          <span style={{ ...s.label, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+            // extracted {filteredExtracted.length} components
+          </span>
+          <button style={{ ...s.btnGhost, fontSize: 10 }} onClick={() => setExtracted([])}>
+            re-scan
+          </button>
+        </div>
+      )}
 
       {/* Search */}
       <div style={{
@@ -364,93 +691,187 @@ function ComponentListScreen({ components, userName, fileKey, onViewDetail, onVi
         />
       </div>
 
-      {/* Count */}
-      <div style={{ padding: '8px 20px' }}>
-        <span style={{ ...s.label, fontSize: 11, color: 'var(--text-secondary)', fontWeight: 'normal' }}>
-          // found {filtered.length} components
-        </span>
-      </div>
+      {/* Library component list (pre-extraction) */}
+      {!hasExtracted && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 8 }}>
+          {filteredGroups.map(group => {
+            const isExpanded = expanded.has(group.nodeId);
+            const hasVariants = group.variantCount > 1;
+            const isSelected = selected.has(group.key);
+            const draft = draftMap[group.key];
+            const latest = versionMap[group.key];
+            const hasDraft = draft && draft.status !== 'published';
 
-      {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {filtered.map(comp => {
-          const latest = versionMap[comp.key];
-          const draft = draftMap[comp.key];
-          const hasDraft = draft && draft.status !== 'published';
+            // Create thumbnail blob URL
+            const thumbSrc = group.thumbnailBytes.length > 0
+              ? URL.createObjectURL(new Blob([new Uint8Array(group.thumbnailBytes)], { type: 'image/png' }))
+              : null;
 
-          return (
-            <div key={comp.key} style={{ ...s.card, display: 'flex', gap: 12 }}>
-              {/* Thumbnail */}
-              <div style={{
-                width: 64, height: 64, background: 'var(--bg-active)', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {comp.thumbnailBytes.length > 0 ? (
-                  <img
-                    src={URL.createObjectURL(new Blob([new Uint8Array(comp.thumbnailBytes)], { type: 'image/png' }))}
-                    style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain' }}
-                  />
-                ) : (
-                  <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>no thumb</span>
+            return (
+              <div key={group.nodeId}>
+                {/* Group row */}
+                <div
+                  style={{
+                    ...s.card, display: 'flex', gap: 10, alignItems: 'center',
+                    cursor: 'pointer',
+                    borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                    padding: '10px 12px',
+                  }}
+                >
+                  {/* Expand arrow */}
+                  <div
+                    onClick={(e) => { e.stopPropagation(); if (hasVariants) toggleExpand(group.nodeId); }}
+                    style={{
+                      width: 14, flexShrink: 0, textAlign: 'center',
+                      cursor: hasVariants ? 'pointer' : 'default',
+                      color: 'var(--text-tertiary)', fontSize: 10,
+                      userSelect: 'none',
+                    }}
+                  >
+                    {hasVariants ? (isExpanded ? '\u25BC' : '\u25B6') : ''}
+                  </div>
+
+                  {/* Checkbox */}
+                  <div
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(group.key); }}
+                    style={{
+                      width: 16, height: 16, flexShrink: 0,
+                      border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                      background: isSelected ? 'var(--accent)' : 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {isSelected && <span style={{ color: '#0A0A0A', fontSize: 11, fontWeight: 700 }}>&#10003;</span>}
+                  </div>
+
+                  {/* Thumbnail */}
+                  {thumbSrc && (
+                    <div style={{
+                      width: 36, height: 36, background: 'var(--bg-active)', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden',
+                    }}>
+                      <img src={thumbSrc} style={{ maxWidth: 32, maxHeight: 32, objectFit: 'contain' }} />
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ ...s.heading, fontSize: 12, color: 'var(--text-primary)' }}>{group.name}</span>
+                      {hasDraft ? (
+                        <Badge status={draft!.status} />
+                      ) : latest ? (
+                        <span style={{ ...s.label, fontSize: 10, color: 'var(--accent)', fontWeight: 'normal' }}>v{latest.version}</span>
+                      ) : null}
+                    </div>
+                    {hasVariants && (
+                      <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                        {group.variantCount} variants
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded variants */}
+                {isExpanded && hasVariants && (
+                  <div style={{ paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                    {group.variants.map(variant => (
+                      <div
+                        key={variant.nodeId}
+                        style={{
+                          display: 'flex', gap: 10, alignItems: 'center',
+                          padding: '6px 12px',
+                          background: 'var(--bg-active)', border: '1px solid var(--border)',
+                        }}
+                      >
+                        <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>{variant.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
+            );
+          })}
+        </div>
+      )}
 
-              {/* Content */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>{comp.name}</span>
-                  {hasDraft ? (
-                    <Badge status={draft!.status} />
-                  ) : latest ? (
-                    <Badge status="published" />
+      {/* Extracted list (post-extraction) */}
+      {hasExtracted && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
+          {filteredExtracted.map(comp => {
+            const latest = versionMap[comp.key];
+            const draft = draftMap[comp.key];
+            const hasDraft = draft && draft.status !== 'published';
+
+            return (
+              <div key={comp.key} style={{ ...s.card, display: 'flex', gap: 12 }}>
+                {/* Thumbnail */}
+                <div style={{
+                  width: 64, height: 64, background: 'var(--bg-active)', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {comp.thumbnailBytes.length > 0 ? (
+                    <img
+                      src={URL.createObjectURL(new Blob([new Uint8Array(comp.thumbnailBytes)], { type: 'image/png' }))}
+                      style={{ maxWidth: 60, maxHeight: 60, objectFit: 'contain' }}
+                    />
                   ) : (
-                    <span style={{
-                      ...s.label, fontSize: 10, color: 'var(--text-tertiary)',
-                      border: '1px solid var(--text-tertiary)', padding: '3px 8px',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                    }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
-                      no versions
+                    <span style={{ color: 'var(--text-tertiary)', fontSize: 10 }}>no thumb</span>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>{comp.name}</span>
+                    {hasDraft ? (
+                      <Badge status={draft!.status} />
+                    ) : latest ? (
+                      <Badge status="published" />
+                    ) : (
+                      <span style={{
+                        ...s.label, fontSize: 10, color: 'var(--text-tertiary)',
+                        border: '1px solid var(--text-tertiary)', padding: '3px 8px',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
+                        no versions
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {hasDraft ? (
+                      <span style={{ ...s.label, fontSize: 11, color: statusColor[draft!.status] }}>
+                        v{draft!.version}-{draft!.status.replace('_', '')}
+                      </span>
+                    ) : latest ? (
+                      <span style={{ ...s.label, fontSize: 11, color: 'var(--accent)' }}>v{latest.version}</span>
+                    ) : null}
+                    {(hasDraft || latest) && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>·</span>}
+                    <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>
+                      {comp.publishStatus.toLowerCase().replace('_', ' ')}
                     </span>
-                  )}
-                </div>
+                  </div>
 
-                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {hasDraft ? (
-                    <span style={{ ...s.label, fontSize: 11, color: statusColor[draft!.status] }}>
-                      v{draft!.version}-{draft!.status.replace('_', '')}
-                    </span>
-                  ) : latest ? (
-                    <span style={{ ...s.label, fontSize: 11, color: 'var(--accent)' }}>v{latest.version}</span>
-                  ) : null}
-                  {(hasDraft || latest) && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>·</span>}
-                  <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>
-                    {comp.publishStatus.toLowerCase().replace('_', ' ')}
-                  </span>
-                </div>
-
-                <div style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)' }}>
-                  {hasDraft
-                    ? `draft by: ${draft!.created_by}`
-                    : latest ? formatDate(latest.published_at || latest.created_at) : ''
-                  }
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  {hasDraft ? (
-                    <button style={s.btnPrimary} onClick={() => onViewDetail(comp)}>view draft</button>
-                  ) : (
-                    <button style={s.btnSecondary} onClick={() => handleCreateDraft(comp)}>create draft</button>
-                  )}
-                  {latest && (
-                    <button style={s.btnGhost} onClick={() => onViewHistory(comp)}>history</button>
-                  )}
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    {hasDraft ? (
+                      <button style={s.btnPrimary} onClick={() => onViewDetail(comp)}>view draft</button>
+                    ) : (
+                      <button style={s.btnSecondary} onClick={() => handleCreateDraft(comp)}>create draft</button>
+                    )}
+                    {latest && (
+                      <button style={s.btnGhost} onClick={() => onViewHistory(comp)}>history</button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -472,26 +893,31 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
   const [changelogMsg, setChangelogMsg] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [diffLines, setDiffLines] = React.useState<DiffLine[]>([]);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // Load data
   React.useEffect(() => {
     (async () => {
-      const draft = await getActiveDraft(comp.key, projectId);
-      const pub = await getLatestPublished(comp.key, projectId);
-      setVersion(draft);
-      setLatest(pub);
-      if (draft) {
-        const log = await getAuditLog(draft.id);
-        setAuditLog(log as AuditEntry[]);
-        if (pub && draft.snapshot && pub.snapshot) {
-          setDiffLines(buildDiffLines(pub.snapshot, draft.snapshot));
-        } else if (draft.diff) {
-          // Use stored diff
-          setDiffLines((draft.diff as any[]).map(d => ({
-            type: d.kind === 'N' ? 'added' : d.kind === 'D' ? 'removed' : 'changed',
-            text: (d.path || []).join('.'),
-          })));
+      try {
+        const draft = await getActiveDraft(comp.key, projectId);
+        const pub = await getLatestPublished(comp.key, projectId);
+        setVersion(draft);
+        setLatest(pub);
+        if (draft) {
+          const log = await getAuditLog(draft.id);
+          setAuditLog(log as AuditEntry[]);
+          if (pub && draft.snapshot && pub.snapshot) {
+            setDiffLines(buildDiffLines(pub.snapshot, draft.snapshot));
+          } else if (draft.diff) {
+            setDiffLines((draft.diff as any[]).map(d => ({
+              type: d.kind === 'N' ? 'added' : d.kind === 'D' ? 'removed' : 'changed',
+              text: (d.path || []).join('.'),
+            })));
+          }
+        } else {
+          setErrorMsg('No active draft found for this component.');
         }
+      } catch (err: any) {
+        setErrorMsg(`Failed to load version: ${err.message || err}`);
       }
     })();
   }, [comp.key, projectId]);
@@ -540,6 +966,21 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
   };
 
   if (!version) {
+    if (errorMsg) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)' }}>
+            <button style={{ ...s.btnGhost, color: 'var(--accent)' }} onClick={onBack}>{'< back'}</button>
+          </div>
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 12, padding: 40,
+          }}>
+            <span style={{ ...s.body, fontSize: 11, color: 'var(--diff-removed)' }}>{errorMsg}</span>
+          </div>
+        </div>
+      );
+    }
     return <ProgressBar percent={50} message="Loading version..." />;
   }
 
@@ -564,10 +1005,8 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
 
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Stepper */}
         <Stepper status={status} />
 
-        {/* Meta */}
         <div style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>
           {status === 'draft' && `created by: ${version.created_by} · ${formatDate(version.created_at)}`}
           {status === 'in_review' && `created by: ${version.created_by} · submitted: ${formatDate(version.updated_at)}`}
@@ -575,7 +1014,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           {status === 'published' && `published by: ${version.created_by} · ${formatDate(version.published_at || version.updated_at)}`}
         </div>
 
-        {/* Thumbnails (draft/review only) */}
         {(status === 'draft' || status === 'in_review') && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span style={s.sectionTitle}>// thumbnails</span>
@@ -597,7 +1035,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Published success card */}
         {status === 'published' && (
           <div style={{
             display: 'flex', gap: 12, alignItems: 'center', padding: 12,
@@ -613,7 +1050,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Changelog (published only) */}
         {status === 'published' && version.changelog_message && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={s.sectionTitle}>// changelog</span>
@@ -625,19 +1061,15 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Diff */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={s.sectionTitle}>// changes vs v{currentVer}</span>
           <DiffBlock lines={diffLines} />
         </div>
 
-        {/* Review section (in_review) */}
         {status === 'in_review' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={s.sectionTitle}>// review note (optional)</span>
-            <div style={{
-              background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: 10,
-            }}>
+            <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', padding: 10 }}>
               <textarea
                 value={reviewNote}
                 onChange={e => setReviewNote(e.target.value)}
@@ -655,11 +1087,8 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Publish section (approved) */}
         {status === 'approved' && (
-          <div style={{
-            ...s.card, display: 'flex', flexDirection: 'column', gap: 12, padding: 16,
-          }}>
+          <div style={{ ...s.card, display: 'flex', flexDirection: 'column', gap: 12, padding: 16 }}>
             <span style={s.sectionTitle}>// publish</span>
             <span style={{ ...s.label, fontSize: 11, color: 'var(--text-primary)', fontWeight: 'normal' }}>version bump:</span>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -692,9 +1121,7 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
               })}
             </div>
             <span style={{ ...s.label, fontSize: 11, color: 'var(--text-primary)', fontWeight: 'normal' }}>changelog message:</span>
-            <div style={{
-              background: 'var(--bg-page)', border: '1px solid var(--border)', padding: 10,
-            }}>
+            <div style={{ background: 'var(--bg-page)', border: '1px solid var(--border)', padding: 10 }}>
               <textarea
                 value={changelogMsg}
                 onChange={e => setChangelogMsg(e.target.value)}
@@ -715,7 +1142,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Submit button (draft) */}
         {status === 'draft' && (
           <div style={{ padding: '8px 0' }}>
             <button style={{ ...s.btnPrimary, width: '100%' }} onClick={handleSubmitForReview} disabled={loading}>
@@ -724,7 +1150,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Audit trail (published) */}
         {status === 'published' && auditLog.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={s.sectionTitle}>// audit_trail</span>
@@ -749,7 +1174,6 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {/* Published action row */}
         {status === 'published' && (
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button style={s.btnSecondary} onClick={onViewHistory}>view history</button>
@@ -794,7 +1218,6 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '12px 20px', borderBottom: '1px solid var(--border)',
@@ -806,7 +1229,6 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
         </div>
       </div>
 
-      {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <span style={s.sectionTitle}>// published_versions</span>
 
@@ -848,7 +1270,6 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
           </div>
         ))}
 
-        {/* Pending drafts */}
         {pending.length > 0 && (
           <div style={{
             ...s.card, borderColor: '#6B728040',
@@ -878,67 +1299,122 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
 // ── App ──────────────────────────────────────────────
 
 type View =
-  | { screen: 'list' }
+  | { screen: 'auth' }
+  | { screen: 'library-setup' }
+  | { screen: 'library' }
   | { screen: 'detail'; comp: ExtractedComponent }
   | { screen: 'detail-version'; version: ComponentVersion; comp: ExtractedComponent }
   | { screen: 'history'; comp: ExtractedComponent };
 
 function App() {
-  const [view, setView] = React.useState<View>({ screen: 'list' });
+  const [view, setView] = React.useState<View>({ screen: 'auth' });
   const [userName, setUserName] = React.useState('');
-  const [fileKey, setFileKey] = React.useState('');
+  const [figmaToken, setFigmaToken] = React.useState<string | null>(null);
+  const [libraryFileKey, setLibraryFileKey] = React.useState<string | null>(null);
+  const [libraryName, setLibraryName] = React.useState('');
   const [projectId, setProjectId] = React.useState<string | null>(null);
-  const [components, setComponents] = React.useState<ExtractedComponent[]>([]);
 
-  // Listen to code.ts messages
+  // Listen to code.ts init message (with saved settings)
   React.useEffect(() => {
-    window.onmessage = (event) => {
+    const handler = (event: MessageEvent) => {
       const msg = event.data.pluginMessage as CodeMessage;
       if (!msg) return;
 
-      switch (msg.type) {
-        case 'init':
-          setUserName(msg.userName);
-          setFileKey(msg.fileKey);
-          getOrCreateProject(msg.fileKey, msg.fileKey)
-            .then(p => setProjectId(p.id))
-            .catch(console.error);
-          break;
-        case 'extraction-complete':
-          setComponents(msg.components);
-          break;
-        case 'error':
-          console.error('Plugin error:', msg.message);
-          break;
+      if (msg.type === 'init') {
+        setUserName(msg.userName);
+
+        // Restore saved OAuth session
+        if (msg.savedToken) {
+          setFigmaToken(msg.savedToken);
+          if (msg.savedUserName) setUserName(msg.savedUserName);
+
+          if (msg.savedFileKey) {
+            setLibraryFileKey(msg.savedFileKey);
+            // Fetch library name and set up project
+            getLibraryInfo(msg.savedFileKey, msg.savedToken)
+              .then(info => {
+                setLibraryName(info.name);
+                return getOrCreateProject(info.name, msg.savedFileKey!);
+              })
+              .then(project => {
+                setProjectId(project.id);
+                setView({ screen: 'library' });
+              })
+              .catch(() => {
+                // Token might be expired, show auth
+                setFigmaToken(null);
+                setView({ screen: 'auth' });
+              });
+          } else {
+            setView({ screen: 'library-setup' });
+          }
+        } else {
+          setView({ screen: 'auth' });
+        }
       }
     };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
   }, []);
+
+  const handleAuthenticated = (token: string, name: string) => {
+    setFigmaToken(token);
+    setUserName(name);
+    postToCode({ type: 'save-settings', token, fileKey: '', userName: name });
+    setView({ screen: 'library-setup' });
+  };
+
+  const handleLibraryConnected = (fileKey: string, name: string) => {
+    setLibraryFileKey(fileKey);
+    setLibraryName(name);
+    postToCode({ type: 'save-settings', token: figmaToken!, fileKey, userName });
+    getOrCreateProject(name, fileKey)
+      .then(p => setProjectId(p.id))
+      .catch(console.error);
+    setView({ screen: 'library' });
+  };
+
+  const handleDisconnect = () => {
+    setFigmaToken(null);
+    setLibraryFileKey(null);
+    setLibraryName('');
+    setProjectId(null);
+    postToCode({ type: 'clear-settings' });
+    setView({ screen: 'auth' });
+  };
+
+  const handleChangeLibrary = () => {
+    setLibraryFileKey(null);
+    setLibraryName('');
+    setProjectId(null);
+    setView({ screen: 'library-setup' });
+  };
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Header (only on list screen) */}
-      {view.screen === 'list' && (
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '14px 20px', borderBottom: '1px solid var(--border)',
-        }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ ...s.heading, fontSize: 16, color: 'var(--accent)' }}>{'>'}</span>
-            <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-primary)' }}>component_changelog</span>
-          </div>
-          <span style={{ ...s.label, fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 'normal' }}>v0.1</span>
-        </div>
-      )}
-
-      {/* Screens */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
-        {view.screen === 'list' && (
-          <ComponentListScreen
-            components={components}
+        {view.screen === 'auth' && (
+          <AuthScreen onAuthenticated={handleAuthenticated} />
+        )}
+
+        {view.screen === 'library-setup' && figmaToken && (
+          <LibrarySetupScreen
+            token={figmaToken}
+            onLibraryConnected={handleLibraryConnected}
+            onDisconnect={handleDisconnect}
+          />
+        )}
+
+        {view.screen === 'library' && figmaToken && libraryFileKey && (
+          <LibraryComponentsScreen
+            token={figmaToken}
+            fileKey={libraryFileKey}
+            libraryName={libraryName}
             userName={userName}
-            fileKey={fileKey}
             onViewDetail={(comp) => setView({ screen: 'detail', comp })}
             onViewHistory={(comp) => setView({ screen: 'history', comp })}
+            onChangeLibrary={handleChangeLibrary}
+            onDisconnect={handleDisconnect}
           />
         )}
 
@@ -947,7 +1423,7 @@ function App() {
             comp={view.comp}
             userName={userName}
             projectId={projectId}
-            onBack={() => setView({ screen: 'list' })}
+            onBack={() => setView({ screen: 'library' })}
             onViewHistory={() => setView({ screen: 'history', comp: view.comp })}
           />
         )}
@@ -966,7 +1442,7 @@ function App() {
           <VersionHistoryScreen
             comp={view.comp}
             projectId={projectId}
-            onBack={() => setView({ screen: 'list' })}
+            onBack={() => setView({ screen: 'library' })}
             onViewDetail={(v) => setView({ screen: 'detail-version', version: v, comp: view.comp })}
           />
         )}
