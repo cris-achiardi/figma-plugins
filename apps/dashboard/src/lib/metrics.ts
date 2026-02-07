@@ -91,6 +91,7 @@ export async function getRecentActivity(projectId: string, limit = 20): Promise<
   id: string;
   action: string;
   performedBy: string;
+  performerPhotoUrl: string | null;
   note: string | null;
   createdAt: string;
   componentName: string;
@@ -120,6 +121,7 @@ export async function getRecentActivity(projectId: string, limit = 20): Promise<
       id: log.id,
       action: log.action,
       performedBy: log.performed_by,
+      performerPhotoUrl: log.performer_photo_url || null,
       note: log.note,
       createdAt: log.created_at,
       componentName: ver?.component_name || 'Unknown',

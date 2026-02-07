@@ -15,6 +15,7 @@ async function sendInit() {
   const msg: CodeMessage = {
     type: 'init',
     userName: figma.currentUser?.name || 'unknown',
+    photoUrl: figma.currentUser?.photoUrl || null,
     fileKey: figma.root.name,
     savedToken: savedToken || undefined,
     savedFileKey: savedFileKey || undefined,

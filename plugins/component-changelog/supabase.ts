@@ -42,6 +42,7 @@ export async function createDraft(params: {
   variablesUsed: any;
   diff: any | null;
   createdBy: string;
+  photoUrl?: string;
 }): Promise<ComponentVersion> {
   // Check for existing active draft — update it instead of creating duplicate
   const existing = await getActiveDraft(params.componentKey, params.projectId);
@@ -62,7 +63,7 @@ export async function createDraft(params: {
       .single();
 
     if (error) throw new Error(`Failed to update draft: ${error.message}`);
-    await logAudit(data.id, 'created', params.createdBy, 'Updated draft with fresh snapshot');
+    await logAudit(data.id, 'created', params.createdBy, 'Updated draft with fresh snapshot', params.photoUrl);
     return data as ComponentVersion;
   }
 
@@ -86,21 +87,21 @@ export async function createDraft(params: {
 
   if (error) throw new Error(`Failed to create draft: ${error.message}`);
 
-  await logAudit(data.id, 'created', params.createdBy);
+  await logAudit(data.id, 'created', params.createdBy, undefined, params.photoUrl);
   return data as ComponentVersion;
 }
 
-export async function submitForReview(versionId: string, userId: string): Promise<void> {
+export async function submitForReview(versionId: string, userId: string, photoUrl?: string): Promise<void> {
   const { error } = await supabase
     .from('component_versions')
     .update({ status: 'in_review', updated_at: new Date().toISOString() })
     .eq('id', versionId);
 
   if (error) throw new Error(`Failed to submit for review: ${error.message}`);
-  await logAudit(versionId, 'submitted_for_review', userId);
+  await logAudit(versionId, 'submitted_for_review', userId, undefined, photoUrl);
 }
 
-export async function approveVersion(versionId: string, reviewerId: string): Promise<void> {
+export async function approveVersion(versionId: string, reviewerId: string, photoUrl?: string): Promise<void> {
   const { error } = await supabase
     .from('component_versions')
     .update({
@@ -111,10 +112,10 @@ export async function approveVersion(versionId: string, reviewerId: string): Pro
     .eq('id', versionId);
 
   if (error) throw new Error(`Failed to approve: ${error.message}`);
-  await logAudit(versionId, 'approved', reviewerId);
+  await logAudit(versionId, 'approved', reviewerId, undefined, photoUrl);
 }
 
-export async function rejectVersion(versionId: string, reviewerId: string, note?: string): Promise<void> {
+export async function rejectVersion(versionId: string, reviewerId: string, note?: string, photoUrl?: string): Promise<void> {
   const { error } = await supabase
     .from('component_versions')
     .update({
@@ -125,14 +126,15 @@ export async function rejectVersion(versionId: string, reviewerId: string, note?
     .eq('id', versionId);
 
   if (error) throw new Error(`Failed to reject: ${error.message}`);
-  await logAudit(versionId, 'rejected', reviewerId, note);
+  await logAudit(versionId, 'rejected', reviewerId, note, photoUrl);
 }
 
 export async function publishVersion(
   versionId: string,
   bumpType: BumpType,
   message: string,
-  userId: string
+  userId: string,
+  photoUrl?: string
 ): Promise<ComponentVersion> {
   // Get the version to compute the new semver
   const { data: version } = await supabase
@@ -171,7 +173,7 @@ export async function publishVersion(
     .single();
 
   if (error) throw new Error(`Failed to publish: ${error.message}`);
-  await logAudit(versionId, 'published', userId, `Published as ${newVersion}`);
+  await logAudit(versionId, 'published', userId, `Published as ${newVersion}`, photoUrl);
   return data as ComponentVersion;
 }
 
@@ -306,7 +308,8 @@ export async function logAudit(
   versionId: string,
   action: AuditAction,
   userId: string,
-  note?: string
+  note?: string,
+  photoUrl?: string
 ): Promise<void> {
   const { error } = await supabase
     .from('audit_log')
@@ -315,6 +318,7 @@ export async function logAudit(
       action,
       performed_by: userId,
       note: note || null,
+      performer_photo_url: photoUrl || null,
     });
 
   if (error) console.error('Audit log failed:', error.message);

@@ -611,7 +611,7 @@ function LibrarySetupScreen({ token, onLibraryConnected, onDisconnect }: {
 // ── Screen: Library Components ───────────────────────
 
 function LibraryComponentsScreen({
-  token, fileKey, libraryName, userName, projectId, visible,
+  token, fileKey, libraryName, userName, photoUrl, projectId, visible,
   onViewDetail, onViewHistory, onChangeLibrary, onDisconnect,
   onRelease, onReleaseHistory,
 }: {
@@ -619,6 +619,7 @@ function LibraryComponentsScreen({
   fileKey: string;
   libraryName: string;
   userName: string;
+  photoUrl: string | null;
   projectId: string;
   visible: boolean;
   onViewDetail: (comp: ExtractedComponent) => void;
@@ -792,6 +793,7 @@ function LibraryComponentsScreen({
         variablesUsed: fresh.variablesUsed,
         diff: diffResult,
         createdBy: userName,
+        photoUrl: photoUrl || undefined,
       });
 
       await refreshVersionMaps();
@@ -1095,9 +1097,10 @@ function LibraryComponentsScreen({
 
 // ── Screen: Version Detail / Approval Pipeline ──────
 
-function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onViewHistory }: {
+function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, onBack, onViewHistory }: {
   comp: ExtractedComponent;
   userName: string;
+  photoUrl: string | null;
   projectId: string;
   versionId?: string;
   onBack: () => void;
@@ -1222,6 +1225,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
         variablesUsed: fresh.variablesUsed,
         diff: diffResult,
         createdBy: userName,
+        photoUrl: photoUrl || undefined,
       });
 
       // Reload the version detail
@@ -1257,7 +1261,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
   const handleSubmitForReview = async () => {
     if (!version) return;
     setLoading(true);
-    await submitForReview(version.id, userName);
+    await submitForReview(version.id, userName, photoUrl || undefined);
     await reload();
     setLoading(false);
   };
@@ -1265,7 +1269,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
   const handleApprove = async () => {
     if (!version) return;
     setLoading(true);
-    await approveVersion(version.id, userName);
+    await approveVersion(version.id, userName, photoUrl || undefined);
     await reload();
     setLoading(false);
   };
@@ -1273,7 +1277,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
   const handleReject = async () => {
     if (!version) return;
     setLoading(true);
-    await rejectVersion(version.id, userName, reviewNote || undefined);
+    await rejectVersion(version.id, userName, reviewNote || undefined, photoUrl || undefined);
     await reload();
     setLoading(false);
   };
@@ -1281,7 +1285,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
   const handlePublish = async () => {
     if (!version) return;
     setLoading(true);
-    const published = await publishVersion(version.id, bumpType, changelogMsg, userName);
+    const published = await publishVersion(version.id, bumpType, changelogMsg, userName, photoUrl || undefined);
     setVersion(published);
     const log = await getAuditLog(published.id);
     setAuditLog(log as AuditEntry[]);
@@ -2076,6 +2080,7 @@ type View =
 function App() {
   const [view, setView] = React.useState<View>({ screen: 'auth' });
   const [userName, setUserName] = React.useState('');
+  const [photoUrl, setPhotoUrl] = React.useState<string | null>(null);
   const [figmaToken, setFigmaToken] = React.useState<string | null>(null);
   const [libraryFileKey, setLibraryFileKey] = React.useState<string | null>(null);
   const [libraryName, setLibraryName] = React.useState('');
@@ -2089,6 +2094,7 @@ function App() {
 
       if (msg.type === 'init') {
         setUserName(msg.userName);
+        setPhotoUrl(msg.photoUrl);
 
         // Restore saved OAuth session
         if (msg.savedToken) {
@@ -2182,6 +2188,7 @@ function App() {
               fileKey={libraryFileKey}
               libraryName={libraryName}
               userName={userName}
+              photoUrl={photoUrl}
               projectId={projectId}
               visible={view.screen === 'library'}
               onViewDetail={(comp) => setView({ screen: 'detail', comp })}
@@ -2198,6 +2205,7 @@ function App() {
           <VersionDetailScreen
             comp={view.comp}
             userName={userName}
+            photoUrl={photoUrl}
             projectId={projectId}
             onBack={() => setView({ screen: 'library' })}
             onViewHistory={() => setView({ screen: 'history', comp: view.comp })}
@@ -2208,6 +2216,7 @@ function App() {
           <VersionDetailScreen
             comp={view.comp}
             userName={userName}
+            photoUrl={photoUrl}
             projectId={projectId}
             versionId={view.version.id}
             onBack={() => setView({ screen: 'history', comp: view.comp })}

@@ -4,6 +4,7 @@ interface ActivityEntry {
   id: string;
   action: string;
   performedBy: string;
+  performerPhotoUrl: string | null;
   note: string | null;
   createdAt: string;
   componentName: string;
@@ -107,9 +108,39 @@ export default function ActivityList({ entries }: Props) {
                   </span>
                 )}
               </div>
-              <span style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
-                {timeAgo(entry.createdAt)}
-              </span>
+              <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                  {timeAgo(entry.createdAt)} by {entry.performedBy}
+                </span>
+                {entry.performerPhotoUrl ? (
+                  <img
+                    src={entry.performerPhotoUrl}
+                    alt={entry.performedBy}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      border: '1px solid var(--border)',
+                    }}
+                  />
+                ) : (
+                  <span style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--text-secondary)',
+                  }}>
+                    {entry.performedBy.charAt(0).toUpperCase()}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}

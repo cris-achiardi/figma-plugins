@@ -55,6 +55,7 @@ export interface AuditEntry {
   component_version_id: string;
   action: AuditAction;
   performed_by: string;
+  performer_photo_url: string | null;
   note: string | null;
   created_at: string;
 }
@@ -150,7 +151,7 @@ export type UIMessage =
 
 // Messages: Code -> UI
 export type CodeMessage =
-  | { type: 'init'; userName: string; fileKey: string; savedToken?: string; savedFileKey?: string; savedUserName?: string }
+  | { type: 'init'; userName: string; photoUrl: string | null; fileKey: string; savedToken?: string; savedFileKey?: string; savedUserName?: string }
   | { type: 'settings-loaded'; token: string | null; fileKey: string | null; userName: string | null }
   | { type: 'extraction-complete'; components: ExtractedComponent[] }
   | { type: 'extraction-progress'; message: string; percent: number }
