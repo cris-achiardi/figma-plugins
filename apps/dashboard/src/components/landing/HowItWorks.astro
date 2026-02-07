@@ -1,0 +1,68 @@
+---
+// How it works section — teammate will polish
+const steps = [
+  { number: '01', title: 'Connect Library', description: 'Link your Figma design system library to the plugin.' },
+  { number: '02', title: 'Track Changes', description: 'Extract component snapshots and automatically detect diffs.' },
+  { number: '03', title: 'Publish Versions', description: 'Review, approve, and publish with semantic versioning.' },
+];
+---
+
+<section class="how-it-works">
+  <h2>How It Works</h2>
+  <div class="steps">
+    {steps.map((s) => (
+      <div class="step">
+        <span class="step-number">{s.number}</span>
+        <h3>{s.title}</h3>
+        <p>{s.description}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .how-it-works {
+    padding: 4rem 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+    border-top: 1px solid var(--border);
+  }
+
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+  }
+
+  .step {
+    text-align: center;
+  }
+
+  .step-number {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .step h3 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .step p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+</style>

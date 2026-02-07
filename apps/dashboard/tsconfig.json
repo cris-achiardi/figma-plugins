@@ -1,0 +1,10 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@plugin/types": ["../../plugins/component-changelog/types.ts"],
+      "@plugin/supabase": ["../../plugins/component-changelog/supabase.ts"]
+    }
+  }
+}

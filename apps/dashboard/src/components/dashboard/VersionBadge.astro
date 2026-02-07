@@ -1,0 +1,44 @@
+---
+interface Props {
+  status: string;
+  version?: string;
+}
+
+const { status, version } = Astro.props;
+
+const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+  published: { label: 'published', color: '#2ea043', bg: 'rgba(46, 160, 67, 0.15)' },
+  draft: { label: 'draft', color: '#f0883e', bg: 'rgba(240, 136, 62, 0.15)' },
+  in_review: { label: 'in review', color: '#58a6ff', bg: 'rgba(88, 166, 255, 0.15)' },
+  approved: { label: 'approved', color: '#00d4aa', bg: 'rgba(0, 212, 170, 0.15)' },
+  deprecated: { label: 'deprecated', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.15)' },
+};
+
+const config = statusConfig[status] || statusConfig.draft;
+---
+
+<span
+  class="badge"
+  style={`color: ${config.color}; background: ${config.bg}; border-color: ${config.color};`}
+>
+  {version && <span class="version">{version}</span>}
+  {config.label}
+</span>
+
+<style>
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-family: var(--font-body);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  .version {
+    font-weight: 500;
+  }
+</style>

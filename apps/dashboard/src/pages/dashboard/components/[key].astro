@@ -1,0 +1,206 @@
+---
+export const prerender = false;
+
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import VersionBadge from '../../../components/dashboard/VersionBadge.astro';
+import { getVersionHistory, getLatestPublished } from '../../../lib/data';
+
+const { key } = Astro.params;
+const projectId = Astro.url.searchParams.get('project') || '';
+
+if (!key || !projectId) {
+  return Astro.redirect('/dashboard');
+}
+
+const decodedKey = decodeURIComponent(key);
+const [history, latest] = await Promise.all([
+  getVersionHistory(decodedKey, projectId),
+  getLatestPublished(decodedKey, projectId),
+]);
+
+const componentName = history[0]?.component_name || decodedKey;
+const currentVersion = latest?.version || 'No published version';
+const currentStatus = latest?.status || 'draft';
+const thumbnailUrl = latest?.thumbnail_url || history[0]?.thumbnail_url;
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  return `${weeks}w ago`;
+}
+---
+
+<DashboardLayout title={`${componentName} — Component Changelog`}>
+  <a href={`/dashboard?project=${projectId}`} class="back-link">&larr; Back to overview</a>
+
+  <div class="component-header">
+    <h1>{componentName}</h1>
+    <VersionBadge status={currentStatus} version={currentVersion} />
+  </div>
+
+  {thumbnailUrl && (
+    <div class="thumbnail">
+      <img src={thumbnailUrl} alt={`${componentName} thumbnail`} />
+    </div>
+  )}
+
+  <section class="history-section">
+    <h2>Version History</h2>
+    {history.length === 0 ? (
+      <p class="empty">No versions recorded</p>
+    ) : (
+      <div class="history-list">
+        {history.map((v) => (
+          <div class="history-entry">
+            <div class="entry-version">
+              <span class="version-number">{v.version}</span>
+              {v.bump_type && <span class="bump-type">{v.bump_type}</span>}
+            </div>
+            <div class="entry-details">
+              <span class="changelog">{v.changelog_message || 'No message'}</span>
+              <div class="entry-meta">
+                <VersionBadge status={v.status} />
+                <span class="entry-time">{timeAgo(v.updated_at)}</span>
+                {v.created_by && <span class="entry-author">by {v.created_by}</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </section>
+</DashboardLayout>
+
+<style>
+  .back-link {
+    display: inline-block;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-link:hover {
+    color: var(--accent);
+  }
+
+  .component-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .thumbnail {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .thumbnail img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 4px;
+  }
+
+  .history-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .history-section h2 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .history-entry {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    align-items: flex-start;
+  }
+
+  .history-entry:last-child {
+    border-bottom: none;
+  }
+
+  .entry-version {
+    flex-shrink: 0;
+    min-width: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .version-number {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .bump-type {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+
+  .entry-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .changelog {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+  }
+
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .entry-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .entry-author {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+  }
+</style>

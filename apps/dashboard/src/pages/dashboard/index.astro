@@ -1,0 +1,114 @@
+---
+export const prerender = false;
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import MetricCard from '../../components/dashboard/MetricCard.astro';
+import ProjectSelector from '../../components/dashboard/ProjectSelector.tsx';
+import ComponentTable from '../../components/dashboard/ComponentTable.tsx';
+import {
+  getProjects,
+  getComponentSummaries,
+  calculateCoverage,
+  calculateDrift,
+  getPublishedCount,
+} from '../../lib/metrics';
+import { getLatestLibraryVersion } from '../../lib/data';
+
+const projects = await getProjects();
+const projectId = Astro.url.searchParams.get('project') || projects[0]?.id || '';
+
+let coverage = 0;
+let drift = 0;
+let publishedCount = 0;
+let latestRelease = '';
+let components: Awaited<ReturnType<typeof getComponentSummaries>> = [];
+
+if (projectId) {
+  [coverage, drift, publishedCount, components] = await Promise.all([
+    calculateCoverage(projectId),
+    calculateDrift(projectId),
+    getPublishedCount(projectId),
+    getComponentSummaries(projectId),
+  ]);
+
+  const latestLib = await getLatestLibraryVersion(projectId);
+  latestRelease = latestLib ? `v${latestLib.version}` : '--';
+}
+---
+
+<DashboardLayout title="Dashboard — Component Changelog">
+  <div class="header">
+    <h1>Health Overview</h1>
+    <ProjectSelector
+      client:load
+      projects={projects}
+      currentProjectId={projectId}
+    />
+  </div>
+
+  {!projectId ? (
+    <p class="empty">No projects found. Use the Figma plugin to create one.</p>
+  ) : (
+    <>
+      <div class="metrics">
+        <MetricCard label="Coverage" value={`${coverage}%`} />
+        <MetricCard label="Drafts" value={drift} />
+        <MetricCard label="Versions" value={publishedCount} />
+        <MetricCard label="Latest Release" value={latestRelease} />
+      </div>
+
+      <section class="table-section">
+        <h2>Components</h2>
+        <ComponentTable
+          client:load
+          components={components}
+          projectId={projectId}
+        />
+      </section>
+    </>
+  )}
+</DashboardLayout>
+
+<style>
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .table-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .table-section h2 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 4rem;
+  }
+</style>

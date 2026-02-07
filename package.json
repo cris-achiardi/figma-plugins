@@ -5,7 +5,8 @@
   "description": "Monorepo for Figma plugins with shared design system",
   "workspaces": [
     "packages/*",
-    "plugins/*"
+    "plugins/*",
+    "apps/*"
   ],
   "scripts": {
     "build:shared-ui": "npm run build --workspace=@figma-plugins/shared-ui",

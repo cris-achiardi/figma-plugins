@@ -1,0 +1,48 @@
+---
+interface Props {
+  label: string;
+  value: string | number;
+  subtitle?: string;
+}
+
+const { label, value, subtitle } = Astro.props;
+---
+
+<div class="metric-card">
+  <div class="metric-value">{value}</div>
+  <div class="metric-label">{label}</div>
+  {subtitle && <div class="metric-subtitle">{subtitle}</div>}
+</div>
+
+<style>
+  .metric-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    min-width: 140px;
+  }
+
+  .metric-value {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.2;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+  }
+
+  .metric-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+</style>

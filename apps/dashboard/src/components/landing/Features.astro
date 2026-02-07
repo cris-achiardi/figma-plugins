@@ -1,0 +1,82 @@
+---
+// Features section — teammate will polish
+const features = [
+  {
+    title: 'Version Tracking',
+    description: 'Every component change is captured with semantic versioning, diffs, and snapshots.',
+  },
+  {
+    title: 'Diff Engine',
+    description: 'See exactly what changed between versions — properties, variables, and structure.',
+  },
+  {
+    title: 'Approval Pipeline',
+    description: 'Draft, review, approve, publish. A workflow that keeps your team aligned.',
+  },
+  {
+    title: 'Health Dashboard',
+    description: 'Monitor coverage, drift, and activity across your entire design system.',
+  },
+];
+---
+
+<section class="features">
+  <h2>Why Component Changelog?</h2>
+  <p class="subtitle">Design systems break silently. Changes go untracked, undocumented, and unreviewed.</p>
+  <div class="feature-grid">
+    {features.map((f) => (
+      <div class="feature-card">
+        <h3>{f.title}</h3>
+        <p>{f.description}</p>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: 4rem 2rem;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    text-align: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+    font-size: 1rem;
+  }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .feature-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+
+  .feature-card h3 {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+
+  .feature-card p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+</style>

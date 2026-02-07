@@ -1,0 +1,66 @@
+---
+export const prerender = false;
+
+import DashboardLayout from '../../layouts/DashboardLayout.astro';
+import AuditTimeline from '../../components/dashboard/AuditTimeline.astro';
+import ProjectSelector from '../../components/dashboard/ProjectSelector.tsx';
+import { getProjects, getRecentActivity } from '../../lib/metrics';
+
+const projects = await getProjects();
+const projectId = Astro.url.searchParams.get('project') || projects[0]?.id || '';
+
+let activity: Awaited<ReturnType<typeof getRecentActivity>> = [];
+
+if (projectId) {
+  activity = await getRecentActivity(projectId, 50);
+}
+---
+
+<DashboardLayout title="Activity — Component Changelog">
+  <div class="header">
+    <h1>Recent Activity</h1>
+    <ProjectSelector
+      client:load
+      projects={projects}
+      currentProjectId={projectId}
+    />
+  </div>
+
+  {!projectId ? (
+    <p class="empty">No projects found.</p>
+  ) : (
+    <section class="activity-section">
+      <AuditTimeline entries={activity} />
+    </section>
+  )}
+</DashboardLayout>
+
+<style>
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .activity-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 4rem;
+  }
+</style>
