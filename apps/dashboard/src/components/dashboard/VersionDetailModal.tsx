@@ -109,10 +109,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function VersionDetailModal({ version, auditLog, allVersions, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [compareId, setCompareId] = useState<string | null>(null);
-  const [compareOpen, setCompareOpen] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
-  const compareRef = useRef<HTMLDivElement>(null);
 
   // Escape to close
   useEffect(() => {
@@ -129,23 +126,9 @@ export default function VersionDetailModal({ version, auditLog, allVersions, onC
     return () => document.body.classList.remove('modal-open');
   }, []);
 
-  // Close compare dropdown on outside click
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (compareRef.current && !compareRef.current.contains(e.target as Node)) {
-        setCompareOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, []);
-
   function handleBackdropClick(e: React.MouseEvent) {
     if (e.target === backdropRef.current) onClose();
   }
-
-  const compareVersion = compareId ? allVersions.find(v => v.id === compareId) : null;
-  const otherVersions = allVersions.filter(v => v.id !== version.id);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Overview' },
@@ -207,103 +190,20 @@ export default function VersionDetailModal({ version, auditLog, allVersions, onC
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            {/* Compare dropdown */}
-            {otherVersions.length > 0 && (
-              <div ref={compareRef} style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setCompareOpen(!compareOpen)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: compareId ? 'var(--bg-hover)' : 'transparent',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '5px 10px',
-                    fontSize: 12,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'border-color 0.15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text-secondary)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                >
-                  {compareId ? `vs ${compareVersion?.version}` : 'Compare with…'}
-                  <svg width="8" height="5" viewBox="0 0 10 6" fill="none"
-                    style={{ transform: compareOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                    <path d="M1 1L5 5L9 1" stroke="#888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {compareOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 4px)',
-                    right: 0,
-                    minWidth: 160,
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 4,
-                    zIndex: 10,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                    maxHeight: 200,
-                    overflowY: 'auto',
-                  }}>
-                    {compareId && (
-                      <button
-                        onClick={() => { setCompareId(null); setCompareOpen(false); }}
-                        style={{
-                          display: 'block', width: '100%', padding: '6px 10px',
-                          background: 'transparent', color: 'var(--text-muted)', border: 'none',
-                          borderRadius: 'var(--radius-sm)', fontSize: 12, cursor: 'pointer', textAlign: 'left',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      >
-                        Clear comparison
-                      </button>
-                    )}
-                    {otherVersions.map(v => (
-                      <button
-                        key={v.id}
-                        onClick={() => { setCompareId(v.id); setCompareOpen(false); }}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                          padding: '6px 10px', background: v.id === compareId ? 'var(--bg-hover)' : 'transparent',
-                          color: 'var(--text-primary)', border: 'none', borderRadius: 'var(--radius-sm)',
-                          fontSize: 12, cursor: 'pointer', textAlign: 'left',
-                          fontFamily: 'var(--font-mono)',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = v.id === compareId ? 'var(--bg-hover)' : 'transparent')}
-                      >
-                        {v.version}
-                        <span style={{ fontFamily: 'var(--font-sans)', color: statusColors[v.status] || 'var(--text-muted)', fontSize: 11 }}>
-                          {statusLabels[v.status]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {/* Close button */}
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 6px',
-                borderRadius: 'var(--radius-sm)', transition: 'color 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '4px 6px',
+              borderRadius: 'var(--radius-sm)', transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Tab bar */}
@@ -339,7 +239,7 @@ export default function VersionDetailModal({ version, auditLog, allVersions, onC
         {/* Tab content */}
         <div className="thin-scrollbar" style={{ overflowY: 'auto', padding: 20, flex: 1 }}>
           {activeTab === 'overview' && (
-            <OverviewTab version={version} compareVersion={compareVersion} />
+            <OverviewTab version={version} />
           )}
           {activeTab === 'activity' && (
             <ActivityTab auditLog={auditLog} />
@@ -355,46 +255,18 @@ export default function VersionDetailModal({ version, auditLog, allVersions, onC
 
 // ===================== OVERVIEW TAB =====================
 
-function OverviewTab({ version, compareVersion }: { version: VersionSlim; compareVersion?: VersionSlim | null }) {
-  const isComparing = !!compareVersion;
-
+function OverviewTab({ version }: { version: VersionSlim }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Thumbnails */}
-      {(version.thumbnail_url || compareVersion?.thumbnail_url) && (
-        <div style={{
-          display: 'flex',
-          gap: 16,
-          justifyContent: isComparing ? 'space-between' : 'center',
-        }}>
-          {isComparing && compareVersion?.thumbnail_url && (
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
-                {compareVersion.version}
-              </div>
-              <div style={{
-                background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)', padding: 16,
-              }}>
-                <img src={compareVersion.thumbnail_url} alt="Previous" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 'var(--radius-sm)' }} />
-              </div>
-            </div>
-          )}
-          {version.thumbnail_url && (
-            <div style={{ flex: 1, textAlign: 'center' }}>
-              {isComparing && (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>
-                  {version.version}
-                </div>
-              )}
-              <div style={{
-                background: 'var(--bg-primary)', border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)', padding: 16,
-              }}>
-                <img src={version.thumbnail_url} alt="Current" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 'var(--radius-sm)' }} />
-              </div>
-            </div>
-          )}
+      {/* Thumbnail */}
+      {version.thumbnail_url && (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            background: 'var(--bg-primary)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)', padding: 16,
+          }}>
+            <img src={version.thumbnail_url} alt="Current" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 'var(--radius-sm)' }} />
+          </div>
         </div>
       )}
 
@@ -419,11 +291,7 @@ function OverviewTab({ version, compareVersion }: { version: VersionSlim; compar
       <MetadataGrid version={version} />
 
       {/* Properties table */}
-      <PropertiesTable
-        properties={version.property_definitions}
-        compareProperties={compareVersion?.property_definitions}
-        isComparing={isComparing}
-      />
+      <PropertiesTable properties={version.property_definitions} />
 
     </div>
   );
@@ -460,17 +328,8 @@ function MetadataGrid({ version }: { version: VersionSlim }) {
   );
 }
 
-function PropertiesTable({ properties, compareProperties, isComparing }: {
-  properties: any;
-  compareProperties?: any;
-  isComparing: boolean;
-}) {
+function PropertiesTable({ properties }: { properties: any }) {
   if (!properties || typeof properties !== 'object' || Object.keys(properties).length === 0) return null;
-
-  const allKeys = new Set([
-    ...Object.keys(properties),
-    ...(compareProperties ? Object.keys(compareProperties) : []),
-  ]);
 
   return (
     <div>
@@ -498,26 +357,12 @@ function PropertiesTable({ properties, compareProperties, isComparing }: {
             </tr>
           </thead>
           <tbody>
-            {[...allKeys].map(key => {
-              const prop = properties[key];
-              const compareProp = compareProperties?.[key];
-              const isNew = isComparing && !compareProp;
-              const isRemoved = isComparing && !prop;
-              const isChanged = isComparing && prop && compareProp && JSON.stringify(prop) !== JSON.stringify(compareProp);
-
-              const rowBg = isNew ? 'rgba(74,222,128,0.05)' : isRemoved ? 'rgba(248,113,113,0.05)' : isChanged ? 'rgba(96,165,250,0.05)' : 'transparent';
-
-              const displayProp = prop || compareProp;
-              const type = displayProp?.type || '—';
-              const options = displayProp?.variantOptions?.join(', ') || displayProp?.defaultValue || '—';
-
+            {Object.entries(properties).map(([key, prop]: [string, any]) => {
+              const type = prop?.type || '—';
+              const options = prop?.variantOptions?.join(', ') || prop?.defaultValue || '—';
               return (
-                <tr key={key} style={{ borderBottom: '1px solid var(--border)', background: rowBg }}>
-                  <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                    {key}
-                    {isNew && <span style={{ color: '#4ade80', marginLeft: 6, fontSize: 10 }}>NEW</span>}
-                    {isRemoved && <span style={{ color: '#f87171', marginLeft: 6, fontSize: 10 }}>REMOVED</span>}
-                  </td>
+                <tr key={key} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '8px 12px', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{key}</td>
                   <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontSize: 12 }}>{type}</td>
                   <td style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontSize: 12 }}>{options}</td>
                 </tr>
@@ -603,19 +448,38 @@ const diffColors: Record<string, { bg: string; fg: string; prefix: string }> = {
 };
 
 function ChangesTab({ version, allVersions }: { version: VersionSlim; allVersions: VersionSlim[] }) {
+  const otherVersions = allVersions.filter(v => v.id !== version.id);
+
+  // Default to the previous version in the list (next index, since sorted desc)
+  const idx = allVersions.findIndex(v => v.id === version.id);
+  const defaultBaseId = idx >= 0 && idx < allVersions.length - 1 ? allVersions[idx + 1].id : null;
+
+  const [compareId, setCompareId] = useState<string | null>(defaultBaseId);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [lines, setLines] = useState<DiffLine[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const compareRef = useRef<HTMLDivElement>(null);
 
+  const baseVersion = compareId ? allVersions.find(v => v.id === compareId) || null : null;
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (compareRef.current && !compareRef.current.contains(e.target as Node)) {
+        setCompareOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  // Fetch snapshots and compute diff
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      // Find the previous version (next in the list, since sorted desc by created_at)
-      const idx = allVersions.findIndex(v => v.id === version.id);
-      const prevVersion = idx >= 0 && idx < allVersions.length - 1 ? allVersions[idx + 1] : null;
-
-      if (!prevVersion) {
+      if (!baseVersion) {
         setLines([]);
         return;
       }
@@ -624,10 +488,10 @@ function ChangesTab({ version, allVersions }: { version: VersionSlim; allVersion
       setError(null);
 
       try {
-        const snapshots = await getVersionSnapshots([version.id, prevVersion.id]);
+        const snapshots = await getVersionSnapshots([version.id, baseVersion.id]);
         if (cancelled) return;
 
-        const oldSnap = snapshots[prevVersion.id];
+        const oldSnap = snapshots[baseVersion.id];
         const newSnap = snapshots[version.id];
 
         if (!oldSnap || !newSnap) {
@@ -644,75 +508,159 @@ function ChangesTab({ version, allVersions }: { version: VersionSlim; allVersion
 
     load();
     return () => { cancelled = true; };
-  }, [version.id]);
+  }, [version.id, compareId]);
+
+  // Comparison selector
+  const selector = otherVersions.length > 0 ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Comparing with</span>
+      <div ref={compareRef} style={{ position: 'relative' }}>
+        <button
+          onClick={() => setCompareOpen(!compareOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'var(--bg-primary)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '4px 10px',
+            fontSize: 12,
+            fontFamily: 'var(--font-mono)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+            transition: 'border-color 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--text-secondary)')}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+        >
+          {baseVersion ? baseVersion.version : 'select version'}
+          <svg width="8" height="5" viewBox="0 0 10 6" fill="none"
+            style={{ transform: compareOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+            <path d="M1 1L5 5L9 1" stroke="#888" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {compareOpen && (
+          <div className="thin-scrollbar" style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            minWidth: 160,
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: 4,
+            zIndex: 10,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            maxHeight: 200,
+            overflowY: 'auto',
+          }}>
+            {otherVersions.map(v => (
+              <button
+                key={v.id}
+                onClick={() => { setCompareId(v.id); setCompareOpen(false); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '6px 10px', background: v.id === compareId ? 'var(--bg-hover)' : 'transparent',
+                  color: 'var(--text-primary)', border: 'none', borderRadius: 'var(--radius-sm)',
+                  fontSize: 12, cursor: 'pointer', textAlign: 'left',
+                  fontFamily: 'var(--font-mono)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = v.id === compareId ? 'var(--bg-hover)' : 'transparent')}
+              >
+                {v.version}
+                <span style={{ fontFamily: 'var(--font-sans)', color: statusColors[v.status] || 'var(--text-muted)', fontSize: 11 }}>
+                  {statusLabels[v.status]}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  ) : null;
 
   if (loading) {
     return (
-      <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px' }}>
-        Loading changes...
+      <div>
+        {selector}
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px' }}>
+          Loading changes...
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ color: '#f87171', textAlign: 'center', padding: '48px 16px' }}>
-        {error}
+      <div>
+        {selector}
+        <div style={{ color: '#f87171', textAlign: 'center', padding: '48px 16px' }}>
+          {error}
+        </div>
       </div>
     );
   }
 
   if (!lines || lines.length === 0) {
     return (
-      <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px' }}>
-        No changes detected
+      <div>
+        {selector}
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '48px 16px' }}>
+          {!baseVersion ? 'No previous version to compare against' : 'No changes detected'}
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-md)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 2,
-      padding: 8,
-      background: 'var(--bg-primary)',
-    }}>
-      {lines.map((l, i) => {
-        const c = diffColors[l.type];
-        return (
-          <div key={i} style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'flex-start',
-            padding: '4px 8px',
-            background: c.bg,
-            borderRadius: 'var(--radius-sm)',
-          }}>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              fontWeight: 700,
-              color: c.fg,
-              flexShrink: 0,
-              lineHeight: '18px',
+    <div>
+      {selector}
+      <div style={{
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        padding: 8,
+        background: 'var(--bg-primary)',
+      }}>
+        {lines.map((l, i) => {
+          const c = diffColors[l.type];
+          return (
+            <div key={i} style={{
+              display: 'flex',
+              gap: 8,
+              alignItems: 'flex-start',
+              padding: '4px 8px',
+              background: c.bg,
+              borderRadius: 'var(--radius-sm)',
             }}>
-              {c.prefix}
-            </span>
-            <span style={{
-              fontSize: 12,
-              color: c.fg,
-              wordBreak: 'break-all',
-              flex: 1,
-              lineHeight: '18px',
-            }}>
-              {l.text}
-            </span>
-          </div>
-        );
-      })}
+              <span style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                fontWeight: 700,
+                color: c.fg,
+                flexShrink: 0,
+                lineHeight: '18px',
+              }}>
+                {c.prefix}
+              </span>
+              <span style={{
+                fontSize: 12,
+                color: c.fg,
+                wordBreak: 'break-all',
+                flex: 1,
+                lineHeight: '18px',
+              }}>
+                {l.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
