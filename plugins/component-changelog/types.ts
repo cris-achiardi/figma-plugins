@@ -1,5 +1,5 @@
 // Version status workflow
-export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published';
+export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'deprecated';
 export type BumpType = 'patch' | 'minor' | 'major';
 export type AuditAction = 'created' | 'submitted_for_review' | 'approved' | 'published' | 'rejected';
 

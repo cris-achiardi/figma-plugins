@@ -40,6 +40,7 @@ const statusColor: Record<VersionStatus, string> = {
   in_review: 'var(--status-review)',
   approved: 'var(--status-approved)',
   published: 'var(--status-published)',
+  deprecated: 'var(--text-tertiary)',
 };
 
 const statusLabel: Record<VersionStatus, string> = {
@@ -47,6 +48,7 @@ const statusLabel: Record<VersionStatus, string> = {
   in_review: 'in_review',
   approved: 'approved',
   published: 'published',
+  deprecated: 'deprecated',
 };
 
 function postToCode(msg: UIMessage) {
@@ -66,30 +68,173 @@ function parseFileKey(input: string): string {
 // Build human-readable diff lines from two JSON snapshots
 interface DiffLine { type: 'added' | 'changed' | 'removed'; text: string }
 
+// Noise fields to skip in diff output
+const SKIP_FIELDS = new Set([
+  'id', 'key', 'transitionNodeID', 'prototypeStartNodeID',
+  'flowStartingPoints', 'prototypeDevice', 'absoluteBoundingBox',
+  'absoluteRenderBounds', 'relativeTransform', 'size',
+]);
+
+// Friendly labels for Figma properties
+const PROP_NAMES: Record<string, string> = {
+  paddingLeft: 'padding-left', paddingRight: 'padding-right',
+  paddingTop: 'padding-top', paddingBottom: 'padding-bottom',
+  itemSpacing: 'item spacing', counterAxisSpacing: 'cross-axis spacing',
+  cornerRadius: 'corner radius', topLeftRadius: 'top-left radius',
+  topRightRadius: 'top-right radius', bottomLeftRadius: 'bottom-left radius',
+  bottomRightRadius: 'bottom-right radius',
+  layoutMode: 'layout mode', primaryAxisSizingMode: 'primary axis sizing',
+  counterAxisSizingMode: 'counter axis sizing',
+  primaryAxisAlignItems: 'main axis align', counterAxisAlignItems: 'cross axis align',
+  opacity: 'opacity', visible: 'visibility', blendMode: 'blend mode',
+  clipsContent: 'clip content', characters: 'text content',
+  fontSize: 'font size', fontFamily: 'font family', fontWeight: 'font weight',
+  textAlignHorizontal: 'text align', lineHeightPx: 'line height',
+  letterSpacing: 'letter spacing', strokeWeight: 'stroke weight',
+  strokeAlign: 'stroke alignment', componentPropertyDefinitions: 'component properties',
+};
+
+function formatColor(c: any): string {
+  if (!c || typeof c !== 'object') return String(c);
+  const r = Math.round((c.r ?? 0) * 255);
+  const g = Math.round((c.g ?? 0) * 255);
+  const b = Math.round((c.b ?? 0) * 255);
+  const a = c.a ?? 1;
+  if (a < 1) return `rgba(${r},${g},${b},${a.toFixed(2)})`;
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+function resolveAtPath(obj: any, path: (string | number)[]): any {
+  let cur = obj;
+  for (const seg of path) { if (cur == null) return undefined; cur = cur[seg]; }
+  return cur;
+}
+
+function findNodeName(obj: any, path: (string | number)[]): string {
+  let cur = obj, name = '';
+  for (const seg of path) {
+    if (cur == null) break;
+    cur = cur[seg];
+    if (cur?.name) name = cur.name;
+  }
+  return name;
+}
+
+function prettyProp(key: string): string {
+  return PROP_NAMES[key] || key.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+}
+
+function prettyVal(v: any): string {
+  if (v == null) return 'none';
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'string') return v.length > 50 ? v.slice(0, 47) + '...' : v;
+  if (typeof v === 'object') {
+    if ('r' in v && 'g' in v && 'b' in v) return formatColor(v);
+    if ('type' in v) return String(v.type);
+    const s = JSON.stringify(v);
+    return s.length > 50 ? s.slice(0, 47) + '...' : s;
+  }
+  return String(v);
+}
+
 function buildDiffLines(oldSnap: any, newSnap: any): DiffLine[] {
   if (!oldSnap || !newSnap) return [];
   const diffs = deepDiff(oldSnap, newSnap);
   if (!diffs) return [];
 
   const lines: DiffLine[] = [];
+  const seen = new Set<string>();
+  const colorPaths = new Set<string>();
+
   for (const d of diffs) {
-    const path = (d.path || []).join('.');
+    const path: (string | number)[] = d.path || [];
+    if (path.length === 0) continue;
+
+    // Skip noise fields
+    if (path.some(seg => typeof seg === 'string' && SKIP_FIELDS.has(seg))) continue;
+
+    // Group RGBA components into single color change
+    const last = path[path.length - 1];
+    if (typeof last === 'string' && ['r', 'g', 'b', 'a'].includes(last)) {
+      const cPath = path.slice(0, -1);
+      const cKey = cPath.join('.');
+      if (colorPaths.has(cKey)) continue;
+      colorPaths.add(cKey);
+      const oldC = resolveAtPath(oldSnap, cPath);
+      const newC = resolveAtPath(newSnap, cPath);
+      const node = findNodeName(oldSnap, cPath) || findNodeName(newSnap, cPath);
+      const ctx = cPath.find(s => typeof s === 'string' && ['strokes', 'effects'].includes(s));
+      const label = ctx === 'strokes' ? 'stroke color' : ctx === 'effects' ? 'effect color' : 'fill color';
+      const pre = node ? `${node}: ` : '';
+      const text = `${pre}${label}: ${formatColor(oldC)} → ${formatColor(newC)}`;
+      if (!seen.has(text)) { seen.add(text); lines.push({ type: 'changed', text }); }
+      continue;
+    }
+
+    // Split path into node context + property
+    let nodeParts: (string | number)[] = [];
+    let propParts: string[] = [];
+    const knownProps = new Set([...Object.keys(PROP_NAMES), 'fills', 'strokes', 'effects', 'style', 'children']);
+    for (let i = 0; i < path.length; i++) {
+      if (typeof path[i] === 'string' && knownProps.has(path[i] as string)) {
+        nodeParts = path.slice(0, i);
+        propParts = path.slice(i).map(String);
+        break;
+      }
+    }
+    if (propParts.length === 0) {
+      nodeParts = path.slice(0, -1);
+      propParts = [String(path[path.length - 1])];
+    }
+
+    const nodeName = findNodeName(oldSnap, nodeParts) || findNodeName(newSnap, nodeParts);
+    const pre = nodeName ? `${nodeName}: ` : '';
+    const prop = prettyProp(propParts[0]) + (propParts.length > 1 ? '.' + propParts.slice(1).join('.') : '');
+
+    let text = '';
+    let type: DiffLine['type'] = 'changed';
+
     switch (d.kind) {
-      case 'N':
-        lines.push({ type: 'added', text: `added ${path}` });
+      case 'N': {
+        type = 'added';
+        const v = d.rhs;
+        text = (v?.name && v?.type) ? `added ${v.type}: "${v.name}"` : `${pre}added ${prop}`;
         break;
-      case 'D':
-        lines.push({ type: 'removed', text: `removed ${path}` });
+      }
+      case 'D': {
+        type = 'removed';
+        const v = d.lhs;
+        text = (v?.name && v?.type) ? `removed ${v.type}: "${v.name}"` : `${pre}removed ${prop}`;
         break;
+      }
       case 'E':
-        lines.push({ type: 'changed', text: `changed ${path}: ${JSON.stringify(d.lhs)} >> ${JSON.stringify(d.rhs)}` });
+        type = 'changed';
+        text = `${pre}${prop}: ${prettyVal(d.lhs)} → ${prettyVal(d.rhs)}`;
         break;
       case 'A':
-        lines.push({ type: 'changed', text: `array change at ${path}[${d.index}]` });
+        if (d.item?.kind === 'N') {
+          type = 'added';
+          const name = d.item?.rhs?.name;
+          text = name ? `${pre}added ${propParts[0]}: "${name}"` : `${pre}added ${prop}[${d.index}]`;
+        } else if (d.item?.kind === 'D') {
+          type = 'removed';
+          const name = d.item?.lhs?.name;
+          text = name ? `${pre}removed ${propParts[0]}: "${name}"` : `${pre}removed ${prop}[${d.index}]`;
+        } else {
+          type = 'changed';
+          text = `${pre}changed ${prop}[${d.index}]`;
+        }
         break;
     }
+
+    if (text && !seen.has(text)) { seen.add(text); lines.push({ type, text }); }
   }
-  return lines.slice(0, 50);
+
+  // Sort: added first, then changed, then removed
+  const order = { added: 0, changed: 1, removed: 2 };
+  lines.sort((a, b) => order[a.type] - order[b.type]);
+  return lines.slice(0, 80);
 }
 
 // ── Shared Styles ────────────────────────────────────
@@ -410,7 +555,7 @@ function LibrarySetupScreen({ token, onLibraryConnected, onDisconnect }: {
 // ── Screen: Library Components ───────────────────────
 
 function LibraryComponentsScreen({
-  token, fileKey, libraryName, userName, projectId,
+  token, fileKey, libraryName, userName, projectId, visible,
   onViewDetail, onViewHistory, onChangeLibrary, onDisconnect,
 }: {
   token: string;
@@ -418,6 +563,7 @@ function LibraryComponentsScreen({
   libraryName: string;
   userName: string;
   projectId: string;
+  visible: boolean;
   onViewDetail: (comp: ExtractedComponent) => void;
   onViewHistory: (comp: ExtractedComponent) => void;
   onChangeLibrary: () => void;
@@ -478,6 +624,13 @@ function LibraryComponentsScreen({
     if (extracted.length > 0) refreshVersionMaps();
   }, [extracted, refreshVersionMaps]);
 
+  // Refresh version data when screen becomes visible (e.g. back from detail)
+  React.useEffect(() => {
+    if (visible && (localGroups.length > 0 || extracted.length > 0)) {
+      refreshVersionMaps();
+    }
+  }, [visible]);
+
   // Listen for extraction messages from code.ts
   React.useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -537,30 +690,53 @@ function LibraryComponentsScreen({
     postToCode({ type: 'extract-selected', nodeIds });
   };
 
+  // Fresh-extract a component, then create a draft with the new snapshot
   const handleCreateDraft = async (comp: ExtractedComponent) => {
     if (!projectId) return;
     setCreatingDraft(comp.key);
     try {
-      const latest = versionMap[comp.key];
-      const diffLines = latest ? deepDiff(latest.snapshot, comp.snapshot) : null;
+      // Re-extract fresh snapshot from Figma (picks up any changes since last extraction)
+      const fresh = await new Promise<ExtractedComponent>((resolve, reject) => {
+        const handler = (e: MessageEvent) => {
+          const msg = e.data.pluginMessage as CodeMessage;
+          if (!msg) return;
+          if (msg.type === 'extraction-complete' && msg.components.length > 0) {
+            window.removeEventListener('message', handler);
+            resolve(msg.components[0]);
+          }
+          if (msg.type === 'error') {
+            window.removeEventListener('message', handler);
+            reject(new Error(msg.message));
+          }
+        };
+        window.addEventListener('message', handler);
+        postToCode({ type: 'extract-single', nodeId: comp.nodeId });
+      });
 
-      const bytes = new Uint8Array(comp.thumbnailBytes);
-      const thumbPath = `${projectId}/${comp.key}/${Date.now()}.png`;
+      // Update the extracted list with fresh data
+      setExtracted(prev => prev.map(c => c.key === fresh.key ? fresh : c));
+
+      // Diff against latest published
+      const latest = await getLatestPublished(fresh.key, projectId);
+      const diffResult = latest ? deepDiff(latest.snapshot, fresh.snapshot) : null;
+
+      const bytes = new Uint8Array(fresh.thumbnailBytes);
+      const thumbPath = `${projectId}/${fresh.key}/${Date.now()}.png`;
       try { await uploadThumbnail(bytes, thumbPath); } catch { /* ok */ }
 
       await createDraft({
         projectId,
-        componentKey: comp.key,
-        componentName: comp.name,
-        snapshot: comp.snapshot,
-        propertyDefinitions: comp.propertyDefinitions,
-        variablesUsed: comp.variablesUsed,
-        diff: diffLines,
+        componentKey: fresh.key,
+        componentName: fresh.name,
+        snapshot: fresh.snapshot,
+        propertyDefinitions: fresh.propertyDefinitions,
+        variablesUsed: fresh.variablesUsed,
+        diff: diffResult,
         createdBy: userName,
       });
 
       await refreshVersionMaps();
-      onViewDetail(comp);
+      onViewDetail(fresh);
     } catch (err: any) {
       console.error('Create draft failed:', err);
     } finally {
@@ -866,10 +1042,11 @@ function LibraryComponentsScreen({
 
 // ── Screen: Version Detail / Approval Pipeline ──────
 
-function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory }: {
+function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onViewHistory }: {
   comp: ExtractedComponent;
   userName: string;
   projectId: string;
+  versionId?: string;
   onBack: () => void;
   onViewHistory: () => void;
 }) {
@@ -882,33 +1059,50 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
   const [loading, setLoading] = React.useState(false);
   const [diffLines, setDiffLines] = React.useState<DiffLine[]>([]);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+  const [loadingDiff, setLoadingDiff] = React.useState(true);
 
   React.useEffect(() => {
+    setLoadingDiff(true);
     (async () => {
       try {
-        const draft = await getActiveDraft(comp.key, projectId);
+        // Load version + published snapshot (both include full snapshot via select *)
+        const target = versionId
+          ? await getVersionById(versionId)
+          : await getActiveDraft(comp.key, projectId);
         const pub = await getLatestPublished(comp.key, projectId);
-        setVersion(draft);
+        setVersion(target);
         setLatest(pub);
-        if (draft) {
-          const log = await getAuditLog(draft.id);
+        if (target) {
+          const log = await getAuditLog(target.id);
           setAuditLog(log as AuditEntry[]);
-          if (pub && draft.snapshot && pub.snapshot) {
-            setDiffLines(buildDiffLines(pub.snapshot, draft.snapshot));
-          } else if (draft.diff) {
-            setDiffLines((draft.diff as any[]).map(d => ({
-              type: d.kind === 'N' ? 'added' : d.kind === 'D' ? 'removed' : 'changed',
-              text: (d.path || []).join('.'),
-            })));
+
+          // Auto-compute diff between published and draft snapshots
+          const diffBase = (pub && pub.id !== target.id) ? pub : null;
+          if (diffBase?.snapshot && target.snapshot) {
+            const lines = buildDiffLines(diffBase.snapshot, target.snapshot);
+            if (lines.length > 0) {
+              setDiffLines(lines);
+            } else {
+              // Fallback: raw diffs if human-readable filtering removed everything
+              const rawDiffs = deepDiff(diffBase.snapshot, target.snapshot);
+              if (rawDiffs && rawDiffs.length > 0) {
+                setDiffLines(rawDiffs.slice(0, 60).map((d: any) => ({
+                  type: d.kind === 'N' ? 'added' as const : d.kind === 'D' ? 'removed' as const : 'changed' as const,
+                  text: (d.path || []).join('.') + (d.kind === 'E' ? `: ${JSON.stringify(d.lhs)} → ${JSON.stringify(d.rhs)}` : ''),
+                })));
+              }
+            }
           }
         } else {
           setErrorMsg('No active draft found for this component.');
         }
       } catch (err: any) {
         setErrorMsg(`Failed to load version: ${err.message || err}`);
+      } finally {
+        setLoadingDiff(false);
       }
     })();
-  }, [comp.key, projectId]);
+  }, [comp.key, projectId, versionId]);
 
   const reload = async () => {
     const v = await getVersionById(version!.id);
@@ -1004,20 +1198,43 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
 
         {(status === 'draft' || status === 'in_review') && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={s.sectionTitle}>// thumbnails</span>
+            <span style={s.sectionTitle}>// compare</span>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {/* Previous published */}
               <div style={{
-                flex: 1, height: 80, background: 'var(--bg-active)',
-                border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flex: 1, height: 100, background: 'var(--bg-active)',
+                border: '1px solid var(--border)', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden',
               }}>
-                <span style={{ ...s.label, fontSize: 10, color: 'var(--text-tertiary)' }}>v{currentVer}</span>
+                {latest?.thumbnail_url ? (
+                  <img src={latest.thumbnail_url} style={{ maxWidth: '90%', maxHeight: 72, objectFit: 'contain' }} />
+                ) : (
+                  <span style={{ ...s.label, fontSize: 10, color: 'var(--text-tertiary)' }}>
+                    {latest ? 'no thumbnail' : 'first version'}
+                  </span>
+                )}
+                <span style={{ ...s.label, fontSize: 9, color: 'var(--text-tertiary)', fontWeight: 'normal' }}>
+                  {latest ? `v${currentVer}` : '—'}
+                </span>
               </div>
-              <span style={{ ...s.label, fontSize: 12, color: 'var(--text-tertiary)' }}>{'>>'}</span>
+              <span style={{ ...s.label, fontSize: 12, color: 'var(--text-tertiary)' }}>→</span>
+              {/* Current draft */}
               <div style={{
-                flex: 1, height: 80, background: 'var(--bg-active)',
-                border: `1px solid ${statusColor[status]}40`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flex: 1, height: 100, background: 'var(--bg-active)',
+                border: `1px solid ${statusColor[status]}40`, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 4, overflow: 'hidden',
               }}>
-                <span style={{ ...s.label, fontSize: 10, color: statusColor[status] }}>{statusLabel[status]}</span>
+                {comp.thumbnailBytes.length > 0 ? (
+                  <img
+                    src={URL.createObjectURL(new Blob([new Uint8Array(comp.thumbnailBytes)], { type: 'image/png' }))}
+                    style={{ maxWidth: '90%', maxHeight: 72, objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span style={{ ...s.label, fontSize: 20, color: statusColor[status] }}>◆</span>
+                )}
+                <span style={{ ...s.label, fontSize: 9, color: statusColor[status], fontWeight: 'normal' }}>
+                  {statusLabel[status]}
+                </span>
               </div>
             </div>
           </div>
@@ -1051,7 +1268,13 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={s.sectionTitle}>// changes vs v{currentVer}</span>
-          <DiffBlock lines={diffLines} />
+          {loadingDiff ? (
+            <div style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', padding: 12, textAlign: 'center' }}>
+              comparing snapshots...
+            </div>
+          ) : (
+            <DiffBlock lines={diffLines} />
+          )}
         </div>
 
         {status === 'in_review' && (
@@ -1138,7 +1361,7 @@ function VersionDetailScreen({ comp, userName, projectId, onBack, onViewHistory 
           </div>
         )}
 
-        {status === 'published' && auditLog.length > 0 && (
+        {auditLog.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={s.sectionTitle}>// audit_trail</span>
             <div style={{ border: '1px solid var(--border)', padding: '8px 12px' }}>
@@ -1201,8 +1424,8 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
 
   if (loading) return <ProgressBar percent={50} message="Loading history..." />;
 
-  const published = versions.filter(v => v.status === 'published');
-  const pending = versions.filter(v => v.status !== 'published');
+  const published = versions.filter(v => v.status === 'published' || v.status === 'deprecated');
+  const pending = versions.filter(v => !['published', 'deprecated'].includes(v.status));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -1396,18 +1619,21 @@ function App() {
           />
         )}
 
-        {view.screen === 'library' && figmaToken && libraryFileKey && projectId && (
-          <LibraryComponentsScreen
-            token={figmaToken}
-            fileKey={libraryFileKey}
-            libraryName={libraryName}
-            userName={userName}
-            projectId={projectId}
-            onViewDetail={(comp) => setView({ screen: 'detail', comp })}
-            onViewHistory={(comp) => setView({ screen: 'history', comp })}
-            onChangeLibrary={handleChangeLibrary}
-            onDisconnect={handleDisconnect}
-          />
+        {figmaToken && libraryFileKey && projectId && (
+          <div style={{ display: view.screen === 'library' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+            <LibraryComponentsScreen
+              token={figmaToken}
+              fileKey={libraryFileKey}
+              libraryName={libraryName}
+              userName={userName}
+              projectId={projectId}
+              visible={view.screen === 'library'}
+              onViewDetail={(comp) => setView({ screen: 'detail', comp })}
+              onViewHistory={(comp) => setView({ screen: 'history', comp })}
+              onChangeLibrary={handleChangeLibrary}
+              onDisconnect={handleDisconnect}
+            />
+          </div>
         )}
 
         {view.screen === 'detail' && projectId && (
@@ -1425,6 +1651,7 @@ function App() {
             comp={view.comp}
             userName={userName}
             projectId={projectId}
+            versionId={view.version.id}
             onBack={() => setView({ screen: 'history', comp: view.comp })}
             onViewHistory={() => setView({ screen: 'history', comp: view.comp })}
           />

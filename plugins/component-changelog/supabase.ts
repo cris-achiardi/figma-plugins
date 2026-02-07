@@ -43,17 +43,37 @@ export async function createDraft(params: {
   diff: any | null;
   createdBy: string;
 }): Promise<ComponentVersion> {
-  // Determine next version based on latest published
-  const latest = await getLatestPublished(params.componentKey, params.projectId);
-  const nextVersion = latest ? computeVersion(latest.version, 'patch') : '0.1.0';
+  // Check for existing active draft — update it instead of creating duplicate
+  const existing = await getActiveDraft(params.componentKey, params.projectId);
 
+  if (existing && (existing.status === 'draft' || existing.status === 'in_review')) {
+    const { data, error } = await supabase
+      .from('component_versions')
+      .update({
+        snapshot: params.snapshot,
+        property_definitions: params.propertyDefinitions,
+        variables_used: params.variablesUsed,
+        diff: params.diff,
+        status: 'draft',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update draft: ${error.message}`);
+    await logAudit(data.id, 'created', params.createdBy, 'Updated draft with fresh snapshot');
+    return data as ComponentVersion;
+  }
+
+  // Create new draft with placeholder version
   const { data, error } = await supabase
     .from('component_versions')
     .insert({
       project_id: params.projectId,
       component_key: params.componentKey,
       component_name: params.componentName,
-      version: nextVersion,
+      version: 'draft',
       status: 'draft',
       snapshot: params.snapshot,
       property_definitions: params.propertyDefinitions,
@@ -125,6 +145,16 @@ export async function publishVersion(
 
   const latest = await getLatestPublished(version.component_key, version.project_id);
   const newVersion = computeVersion(latest?.version || '0.0.0', bumpType);
+
+  // Deprecate previous published version(s) for this component
+  if (latest) {
+    await supabase
+      .from('component_versions')
+      .update({ status: 'deprecated', updated_at: new Date().toISOString() })
+      .eq('component_key', version.component_key)
+      .eq('project_id', version.project_id)
+      .eq('status', 'published');
+  }
 
   const { data, error } = await supabase
     .from('component_versions')
@@ -205,7 +235,7 @@ export async function getProjectVersionMaps(
 }> {
   const { data } = await supabase
     .from('component_versions')
-    .select('*')
+    .select('id, project_id, component_key, component_name, version, status, thumbnail_url, changelog_message, bump_type, created_by, reviewed_by, published_at, created_at, updated_at')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
 

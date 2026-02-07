@@ -9,683 +9,248 @@ Build a Figma plugin that extracts component data, stores versioned snapshots in
 
 ---
 
-## Phase 1: Plugin Scaffold + Supabase Schema
+## Progress Overview
 
-### 1.1 Create plugin folder structure
+| Phase | Description | Status |
+|-------|------------|--------|
+| 1 | Plugin Scaffold + Supabase Schema | COMPLETE |
+| 2 | Types + Supabase Client | COMPLETE |
+| 3 | Sandbox Logic (code.ts) | COMPLETE |
+| 4 | React UI (ui.tsx) | MOSTLY COMPLETE |
+| 5 | Diff Engine | PARTIAL |
+| — | OAuth 2 Flow (not in original plan) | COMPLETE |
 
+### What's Working
+- Full OAuth 2 flow: popup → edge function → `oauth_sessions` polling → auto-advance
+- Plugin API component discovery with `loadAllPagesAsync` + `findAllWithCriteria`
+- Variant grouping via ComponentSetNode (79 components, 155 variants on test library)
+- Full approval pipeline: Draft → Submit → Approve → Publish with semver bumping
+- Batch version status loading (single query via `getProjectVersionMaps`)
+- Persistent component list (no re-scan when navigating back from detail)
+- Thumbnail export during extraction
+- Audit logging on all status transitions
+
+### What's Remaining
+- [ ] **Version Detail Screen polish** — match wireframe layout (thumbnail before/after, diff viewer, progress stepper)
+- [ ] **Human-readable diff summaries** — transform raw `deep-diff` output into readable change entries
+- [ ] **Version History Screen** — timeline of published versions per component (Screen 3)
+- [ ] **Search/filter** in component list
+- [ ] **Reconstruction** — rebuild component from stored JSON snapshot (stretch goal)
+- [ ] **Export JSON** button for published versions
+- [ ] **Reject with note** — review note input on rejection
+- [ ] **Re-extract** — update an existing draft with fresh snapshot data
+- [ ] **RLS policies** — enforce reviewer != creator in production
+
+---
+
+## Phase 1: Plugin Scaffold + Supabase Schema — COMPLETE
+
+### Files created
 ```
 plugins/component-changelog/
-├── manifest.json
-├── package.json
-├── tsconfig.json
-├── types.ts
-├── code.ts
-├── ui.tsx
-├── supabase.ts
-├── inline-ui.js
+├── manifest.json       — plugin config with OAuth + network domains
+├── package.json        — dependencies + esbuild build pipeline
+├── tsconfig.json       — TypeScript config
+├── types.ts            — shared type definitions
+├── code.ts             — Figma sandbox logic
+├── ui.tsx              — React UI
+├── supabase.ts         — Supabase client + API functions
+├── figma-api.ts        — Figma REST API client (NEW, not in original plan)
+├── inline-ui.js        — HTML template with CSS tokens
 ```
 
-### 1.2 manifest.json
+### Supabase schema (deployed)
+- `projects` — unique on `figma_file_key`
+- `component_versions` — with approval workflow + unique constraint `(project_id, component_key, version)`
+- `audit_log` — tracks all status transitions
+- `figma_tokens` — stores OAuth access/refresh tokens per Figma user
+- `oauth_sessions` — temporary polling table for OAuth callback (NEW, not in original plan)
+- `thumbnails` storage bucket — public read
+
+### Edge Functions
+- `figma-oauth-callback` — exchanges OAuth code for tokens, writes to `oauth_sessions` + `figma_tokens`
+
+### manifest.json (actual)
 ```json
 {
   "name": "Component Changelog",
-  "id": "PLACEHOLDER_ID",
+  "id": "component-changelog-001",
   "api": "1.0.0",
   "main": "code.js",
   "ui": "ui.html",
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
+  "permissions": ["currentuser"],
   "networkAccess": {
-    "allowedDomains": ["https://*.supabase.co", "https://*.supabase.in"]
+    "allowedDomains": [
+      "https://*.supabase.co",
+      "https://*.supabase.in",
+      "https://api.figma.com",
+      "https://www.figma.com"
+    ]
   }
 }
 ```
 
-### 1.3 package.json
-Follow existing pattern. Add dependencies:
-- `@supabase/supabase-js` — Supabase client
-- `deep-diff` — JSON diffing
-- `react`, `react-dom` — UI
-- `@figma-plugins/shared-ui` — shared components
-- `@figma/plugin-typings`, `esbuild`, `typescript` — dev
+---
 
-### 1.4 tsconfig.json
-Copy from ds-adoption-tracker. Add `supabase.ts` to files list.
+## Phase 2: Types + Supabase Client — COMPLETE
 
-### 1.5 inline-ui.js
-Copy from ds-adoption-tracker (identical pattern).
+### types.ts additions beyond original plan
+- `FigmaUser` — OAuth user info
+- `LibraryInfo`, `LibraryComponent` — REST API types (used for initial discovery, now secondary)
+- `ComponentGroup` — UI grouping type
+- `LocalComponentGroup` — Plugin API scan result with variant info
+- `Project` — Supabase project row type
+- Extended `UIMessage` with: `save-settings`, `load-settings`, `clear-settings`, `scan-local-components`
+- Extended `CodeMessage` with: `settings-loaded`, `local-components`
 
-### 1.6 Root package.json
-Add workspace entry if needed (already covered by `plugins/*` glob).
+### supabase.ts additions beyond original plan
+- `getOrCreateProject()` — find or create project by file key
+- `getProjectVersionMaps()` — batch query for all version statuses (replaced N+1 queries)
+- `getActiveDraft()` — find latest non-published version for a component
+- `getVersionById()` — single version lookup
+- `getStoredToken()` / `refreshFigmaToken()` — OAuth token management
+- Fixed `createDraft()` to bump version from latest published (avoids unique constraint violation)
 
-### 1.7 Supabase schema
-
-```sql
--- Projects table
-CREATE TABLE projects (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  figma_file_key TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Component versions with approval workflow
-CREATE TABLE component_versions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES projects(id),
-  component_key TEXT NOT NULL,
-  component_name TEXT NOT NULL,
-  version TEXT NOT NULL,                -- semver: "1.2.0"
-  status TEXT NOT NULL DEFAULT 'draft', -- draft | in_review | approved | published
-  snapshot JSONB NOT NULL,              -- JSON_REST_V1 export
-  property_definitions JSONB,
-  variables_used JSONB,
-  thumbnail_url TEXT,
-  diff JSONB,                           -- diff against previous published version
-  changelog_message TEXT,               -- human-written changelog entry
-  bump_type TEXT,                       -- patch | minor | major
-  created_by TEXT,
-  reviewed_by TEXT,
-  published_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(project_id, component_key, version)
-);
-
--- Audit log
-CREATE TABLE audit_log (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  component_version_id UUID REFERENCES component_versions(id),
-  action TEXT NOT NULL,                 -- created | submitted_for_review | approved | published | rejected
-  performed_by TEXT,
-  note TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS policies (demo: allow all authenticated, production: enforce reviewer != creator)
-ALTER TABLE component_versions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
-```
-
-**Files to create/modify:**
-- `plugins/component-changelog/manifest.json` — new
-- `plugins/component-changelog/package.json` — new
-- `plugins/component-changelog/tsconfig.json` — new
-- `plugins/component-changelog/inline-ui.js` — copy from ds-adoption-tracker
-- Supabase project setup (manual, via Supabase dashboard)
+### figma-api.ts (NEW — not in original plan)
+- `getMe(token)` — get authenticated Figma user info
+- `getFileInfo(fileKey, token)` — get file name
+- `getFileComponents(fileKey, token)` — list file components via REST API
+- `getLibraryInfo(fileKey, token)` — combined file info + component count
 
 ---
 
-## Phase 2: Types + Supabase Client
+## Phase 3: Sandbox Logic (code.ts) — COMPLETE
 
-### 2.1 types.ts — Shared types
+### Implemented
+- Plugin initialization with `showUI` + `skipInvisibleInstanceChildren`
+- Init message with saved OAuth state from `clientStorage`
+- **Component discovery via Plugin API** (not REST API as originally planned):
+  - `figma.loadAllPagesAsync()` for cross-page discovery
+  - `findAllWithCriteria({ types: ['COMPONENT_SET'] })` for component sets
+  - `findAllWithCriteria({ types: ['COMPONENT'] })` for standalones
+  - Native variant grouping via `ComponentSetNode.children`
+- Component extraction: `JSON_REST_V1` snapshot + PNG thumbnail + property definitions + bound variables
+- Batch extraction (`extractSelected`) and single extraction (`extractSingle`)
+- Navigation via `scrollAndZoomIntoView`
+- OAuth settings persistence via `figma.clientStorage` (save/load/clear)
+- Progress reporting during extraction
 
-```ts
-// Version status workflow
-export type VersionStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type BumpType = 'patch' | 'minor' | 'major';
-export type AuditAction = 'created' | 'submitted_for_review' | 'approved' | 'published' | 'rejected';
-
-// Data models
-export interface ComponentVersion {
-  id: string;
-  project_id: string;
-  component_key: string;
-  component_name: string;
-  version: string;
-  status: VersionStatus;
-  snapshot: any;              // JSON_REST_V1 structure
-  property_definitions: any;
-  variables_used: any;
-  thumbnail_url: string | null;
-  diff: any | null;
-  changelog_message: string | null;
-  bump_type: BumpType | null;
-  created_by: string;
-  reviewed_by: string | null;
-  published_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AuditEntry {
-  id: string;
-  component_version_id: string;
-  action: AuditAction;
-  performed_by: string;
-  note: string | null;
-  created_at: string;
-}
-
-// Extracted component data (from sandbox)
-export interface ExtractedComponent {
-  key: string;
-  name: string;
-  nodeId: string;
-  snapshot: any;
-  propertyDefinitions: any;
-  variablesUsed: any;
-  thumbnailBytes: number[];   // PNG bytes
-  publishStatus: string;
-}
-
-// Messages: UI → Code
-export type UIMessage =
-  | { type: 'extract-components'; scope: 'page' | 'selection' }
-  | { type: 'extract-single'; nodeId: string }
-  | { type: 'navigate'; nodeId: string }
-  | { type: 'reconstruct'; snapshot: any };
-
-// Messages: Code → UI
-export type CodeMessage =
-  | { type: 'init'; userName: string; fileKey: string }
-  | { type: 'extraction-complete'; components: ExtractedComponent[] }
-  | { type: 'extraction-progress'; message: string; percent: number }
-  | { type: 'reconstruction-complete'; nodeId: string }
-  | { type: 'error'; message: string };
-```
-
-### 2.2 supabase.ts — Client setup (runs in UI context)
-
-```ts
-import { createClient } from '@supabase/supabase-js';
-
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// API functions for the approval workflow
-export async function createDraft(data: {...}): Promise<ComponentVersion> { ... }
-export async function submitForReview(versionId: string, userId: string): Promise<void> { ... }
-export async function approveVersion(versionId: string, reviewerId: string): Promise<void> { ... }
-export async function publishVersion(versionId: string, bumpType: BumpType, message: string): Promise<void> { ... }
-export async function getVersionHistory(componentKey: string, projectId: string): Promise<ComponentVersion[]> { ... }
-export async function getLatestPublished(componentKey: string, projectId: string): Promise<ComponentVersion | null> { ... }
-export async function uploadThumbnail(bytes: Uint8Array, path: string): Promise<string> { ... }
-export async function logAudit(versionId: string, action: AuditAction, userId: string, note?: string): Promise<void> { ... }
-```
-
-**Files to create:**
-- `plugins/component-changelog/types.ts`
-- `plugins/component-changelog/supabase.ts`
+### Not yet implemented
+- Reconstruction from JSON snapshot (stretch goal)
 
 ---
 
-## Phase 3: Sandbox Logic (code.ts)
+## Phase 4: React UI (ui.tsx) — MOSTLY COMPLETE
 
-### 3.1 Plugin initialization
-- `figma.showUI(__html__, { width: 480, height: 640 })`
-- `figma.skipInvisibleInstanceChildren = true`
-- Send init message with `figma.currentUser.name` and file key
+### Screen 0: Auth Screen — COMPLETE
+- "Connect with Figma" button opens OAuth popup
+- Polls `oauth_sessions` table every 2s for token
+- Auto-advances to library setup on successful auth
+- Logout clears stored token
 
-### 3.2 Component extraction
-- `findAllWithCriteria({ types: ['COMPONENT', 'COMPONENT_SET'] })` for discovery
-- For each component:
-  - `exportAsync({ format: 'JSON_REST_V1' })` → full snapshot
-  - `exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: 2 } })` → thumbnail
-  - Read `componentPropertyDefinitions`
-  - Read `boundVariables` recursively on children
-  - Read `key` (PublishableMixin) for stable identifier
-  - Read `getPublishStatusAsync()` for library status
-- Send progress updates during extraction
-- Send extracted data to UI via `figma.ui.postMessage()`
+### Screen 1: Library Setup — COMPLETE
+- Paste Figma file URL or key
+- Validates via REST API (`getLibraryInfo`)
+- Shows file name and component count
+- Creates/gets project in Supabase
 
-### 3.3 Reconstruction (Phase 4 feature, stub for now)
-- Receive JSON snapshot from UI
-- Walk tree recursively, create nodes per type
-- Apply properties, fills, strokes, effects, layout
-- Return created node ID
+### Screen 2: Library Components (Component List) — COMPLETE (needs polish)
+- Uses Plugin API scan for component discovery
+- Expandable component set rows with variant counts
+- Version status badges (published version, active draft status)
+- "Create Draft" button per component (with loading state)
+- "View Draft" / version navigation to detail screen
+- Batch version status loaded via single query
+- Persistent mount — stays mounted when navigating to detail screen
+- Refreshes version maps when becoming visible again
 
-### 3.4 Navigation
-- `figma.viewport.scrollAndZoomIntoView([node])` for navigating to components
+**Remaining polish to match wireframes:**
+- [ ] Search/filter bar
+- [ ] Thumbnail previews in list view (currently skipped for scan speed)
+- [ ] "Extract All" bulk action
+- [ ] Publish status dots (green/yellow/gray)
 
-**Files to create:**
-- `plugins/component-changelog/code.ts`
+### Screen 3: Version Detail / Approval Pipeline — PARTIAL
+- Basic approval pipeline works: Draft → Submit → Approve → Publish
+- Semver picker (patch/minor/major) on publish
+- Changelog message input on publish
 
----
+**Remaining to match wireframes:**
+- [ ] Progress stepper visualization (draft → review → approved → published)
+- [ ] Thumbnail before/after comparison
+- [ ] Human-readable diff viewer (currently shows raw diff or nothing)
+- [ ] Review note input on reject
+- [ ] Audit trail display
+- [ ] Published read-only state with full changelog
 
-## Phase 4: React UI (ui.tsx)
-
-### 4.1 Views/Screens
-
-**Screen 1: Component List** (default)
-- Shows all components on current page/selection
-- Each component shows: name, publish status, last version, status badge
-- "Create Draft" button per component → extracts and sends to Supabase
-- "Extract All" button for bulk extraction
-
-**Screen 2: Version Detail / Approval Pipeline**
-- Shows draft snapshot with JSON diff against last published version
-- Status badge: `draft` → `in_review` → `approved` → `published`
-- Action buttons based on current status:
-  - Draft: "Submit for Review" button
-  - In Review: "Approve" button + "Reject" button
-  - Approved: Semver picker (patch/minor/major) + changelog message input + "Publish" button
-  - Published: Read-only view with changelog
-- Diff viewer: highlights added/removed/changed properties
-- Thumbnail preview (before/after)
-
-**Screen 3: Version History**
-- Timeline of all published versions for a component
-- Each entry shows: version number, bump type badge, changelog message, date, author
-- Click to expand and see full diff
-- "Restore" button (future: triggers reconstruction)
-
-### 4.2 Wireframes
-
-Plugin window: **480 x 640px**
-
-#### Screen 1: Component List (Default View)
-
-```
-┌──────────────────────────────────────────────────┐
-│  Component Changelog                        v0.1 │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Scope: [ Page v ]              [ Extract All ]  │
-│                                                  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │  Search components...                       │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                  │
-│  Found 4 components                              │
-│                                                  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │  Button                                     │ │
-│  │  ┌──────────┐  Published v1.2.0             │ │
-│  │  │          │  Status: * UP_TO_DATE         │ │
-│  │  │ (thumb)  │  3 variants  5 properties     │ │
-│  │  │          │  Last: Feb 4, 2026            │ │
-│  │  └──────────┘                               │ │
-│  │              [ Create Draft ]  [ History ]  │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │  Input                                      │ │
-│  │  ┌──────────┐  Draft v1.1.0                 │ │
-│  │  │          │  Status: * CHANGED            │ │
-│  │  │ (thumb)  │  2 variants  3 properties     │ │
-│  │  │          │  Draft by: Carlos             │ │
-│  │  └──────────┘                               │ │
-│  │              [ View Draft ]    [ History ]   │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │  Card                                       │ │
-│  │  ┌──────────┐  No versions yet              │ │
-│  │  │          │  Status: * UNPUBLISHED        │ │
-│  │  │ (thumb)  │  1 variant  2 properties      │ │
-│  │  │          │                               │ │
-│  │  └──────────┘                               │ │
-│  │              [ Create Draft ]               │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                  │
-│  ┌─────────────────────────────────────────────┐ │
-│  │  Avatar                                     │ │
-│  │  ┌──────────┐  Published v2.0.0             │ │
-│  │  │ (thumb)  │  Status: * UP_TO_DATE         │ │
-│  │  └──────────┘                               │ │
-│  │              [ Create Draft ]  [ History ]  │ │
-│  └─────────────────────────────────────────────┘ │
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**Interaction notes:**
-- **Scope dropdown**: `Page` | `Selection` (like ds-adoption-tracker)
-- **Extract All**: Extracts all components, creates drafts in bulk
-- **Create Draft**: Extracts single component, sends snapshot to Supabase as `draft`
-- **View Draft**: Goes to Screen 2 (approval pipeline) for existing draft
-- **History**: Goes to Screen 3 (version timeline)
-- Status dot color: green = UP_TO_DATE, yellow = CHANGED, gray = UNPUBLISHED
-
-#### Screen 2: Version Detail / Approval Pipeline
-
-Four states based on `status`. Only one visible at a time.
-
-**State A: Draft (just created)**
-
-```
-┌──────────────────────────────────────────────────┐
-│  < Back                          Button  v1.3.0  │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Status: o Draft  .  .  .                        │
-│          ======= ----- ----- -----               │
-│          draft  review approved published        │
-│                                                  │
-│  Created by: Carlos  Feb 6, 2026                 │
-│                                                  │
-│  ┌─ Thumbnail ──────────────────────────────────┐│
-│  │   ┌──────────┐     ┌──────────┐             ││
-│  │   │ Previous │     │ Current  │             ││
-│  │   │  v1.2.0  │ --> │  Draft   │             ││
-│  │   │          │     │          │             ││
-│  │   └──────────┘     └──────────┘             ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Changes vs v1.2.0 ─────────────────────────┐│
-│  │                                              ││
-│  │  + Added variant: Size=XLarge               ││
-│  │  ~ Changed fills[0].color                   ││
-│  │    from: rgba(59, 130, 246, 1)              ││
-│  │    to:   rgba(37, 99, 235, 1)               ││
-│  │  ~ Changed paddingLeft: 16 -> 20            ││
-│  │  ~ Changed paddingRight: 16 -> 20           ││
-│  │  - Removed effect: DROP_SHADOW              ││
-│  │                                              ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌──────────────────────────────────────────────┐│
-│  │              [ Submit for Review ]           ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**State B: In Review**
-
-```
-┌──────────────────────────────────────────────────┐
-│  < Back                          Button  v1.3.0  │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Status: v Draft -> o In Review  .  .            │
-│          ======================= ----- -----     │
-│          draft     review      approved published│
-│                                                  │
-│  Created by: Carlos  Submitted: Feb 6, 2026     │
-│                                                  │
-│  ┌─ Thumbnail ──────────────────────────────────┐│
-│  │   ┌──────────┐     ┌──────────┐             ││
-│  │   │ Previous │ --> │ Current  │             ││
-│  │   │  v1.2.0  │     │  Draft   │             ││
-│  │   └──────────┘     └──────────┘             ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Changes vs v1.2.0 ─────────────────────────┐│
-│  │  + Added variant: Size=XLarge               ││
-│  │  ~ Changed fills[0].color                   ││
-│  │    from: rgba(59, 130, 246, 1)              ││
-│  │    to:   rgba(37, 99, 235, 1)               ││
-│  │  ~ Changed paddingLeft: 16 -> 20            ││
-│  │  ~ Changed paddingRight: 16 -> 20           ││
-│  │  - Removed effect: DROP_SHADOW              ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌──────────────────────────────────────────────┐│
-│  │  Review note (optional):                    ││
-│  │  ┌──────────────────────────────────────┐   ││
-│  │  │ Looks good, new XL variant matches   │   ││
-│  │  │ the updated spacing guidelines.      │   ││
-│  │  └──────────────────────────────────────┘   ││
-│  │                                              ││
-│  │       [ Reject ]          [ Approve ]       ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**State C: Approved (ready to publish)**
-
-```
-┌──────────────────────────────────────────────────┐
-│  < Back                          Button  v1.3.0  │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Status: v Draft -> v Reviewed -> o Approved  .  │
-│          =================================== --- │
-│          draft     review       approved published│
-│                                                  │
-│  Approved by: Carlos  Feb 6, 2026               │
-│                                                  │
-│  ┌─ Changes vs v1.2.0 ─────────────────────────┐│
-│  │  + Added variant: Size=XLarge               ││
-│  │  ~ Changed fills[0].color                   ││
-│  │  ~ Changed paddingLeft: 16 -> 20            ││
-│  │  ~ Changed paddingRight: 16 -> 20           ││
-│  │  - Removed effect: DROP_SHADOW              ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Publish ────────────────────────────────────┐│
-│  │                                              ││
-│  │  Version bump:                              ││
-│  │  ┌────────┐ ┌────────┐ ┌────────┐          ││
-│  │  │ Patch  │ │* Minor │ │ Major  │          ││
-│  │  │ 1.2.1  │ │ 1.3.0  │ │ 2.0.0  │          ││
-│  │  └────────┘ └────────┘ └────────┘          ││
-│  │                                              ││
-│  │  Changelog message:                         ││
-│  │  ┌──────────────────────────────────────┐   ││
-│  │  │ Added XLarge size variant. Updated   │   ││
-│  │  │ primary color to match new brand     │   ││
-│  │  │ guidelines. Increased horizontal     │   ││
-│  │  │ padding for better touch targets.    │   ││
-│  │  │ Removed default shadow.              │   ││
-│  │  └──────────────────────────────────────┘   ││
-│  │                                              ││
-│  │              [ Publish v1.3.0 ]             ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**State D: Published (read-only)**
-
-```
-┌──────────────────────────────────────────────────┐
-│  < Back                          Button  v1.3.0  │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Status: v Draft -> v Reviewed -> v Approved -> v│
-│          ======================================= │
-│          draft     review       approved published│
-│                                                  │
-│  ┌──────────────────────────────────────────────┐│
-│  │  (v) Published                              ││
-│  │  v1.3.0 (minor)  Feb 6, 2026               ││
-│  │  By: Carlos                                 ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Changelog ──────────────────────────────────┐│
-│  │                                              ││
-│  │  Added XLarge size variant. Updated primary  ││
-│  │  color to match new brand guidelines.        ││
-│  │  Increased horizontal padding for better     ││
-│  │  touch targets. Removed default shadow.      ││
-│  │                                              ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Changes ────────────────────────────────────┐│
-│  │  + Added variant: Size=XLarge               ││
-│  │  ~ Changed fills[0].color                   ││
-│  │  ~ Changed paddingLeft: 16 -> 20            ││
-│  │  ~ Changed paddingRight: 16 -> 20           ││
-│  │  - Removed effect: DROP_SHADOW              ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌─ Audit Trail ────────────────────────────────┐│
-│  │  14:32  Carlos  Created draft               ││
-│  │  14:35  Carlos  Submitted for review        ││
-│  │  14:40  Carlos  Approved                    ││
-│  │  14:42  Carlos  Published as v1.3.0         ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│       [ View History ]    [ Export JSON ]        │
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-#### Screen 3: Version History
-
-```
-┌──────────────────────────────────────────────────┐
-│  < Back                       Button  History    │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Published versions                              │
-│                                                  │
-│  ┌──────────────────────────────────────────────┐│
-│  │  v1.3.0  ┌───────┐  Feb 6, 2026            ││
-│  │  MINOR   │ thumb │  Carlos                  ││
-│  │          └───────┘                           ││
-│  │  Added XLarge size variant. Updated primary  ││
-│  │  color to match new brand guidelines.        ││
-│  │                                              ││
-│  │  [ View Details ]  [ Export JSON ]           ││
-│  ├──────────────────────────────────────────────┤│
-│  │  v1.2.0  ┌───────┐  Jan 28, 2026           ││
-│  │  MINOR   │ thumb │  Maria                   ││
-│  │          └───────┘                           ││
-│  │  Added Ghost variant style. Updated          ││
-│  │  documentation links.                        ││
-│  │                                              ││
-│  │  [ View Details ]  [ Export JSON ]           ││
-│  ├──────────────────────────────────────────────┤│
-│  │  v1.1.0  ┌───────┐  Jan 15, 2026           ││
-│  │  MINOR   │ thumb │  Carlos                  ││
-│  │          └───────┘                           ││
-│  │  Added Secondary variant. Added Disabled     ││
-│  │  boolean property.                           ││
-│  │                                              ││
-│  │  [ View Details ]  [ Export JSON ]           ││
-│  ├──────────────────────────────────────────────┤│
-│  │  v1.0.0  ┌───────┐  Jan 5, 2026            ││
-│  │  MAJOR   │ thumb │  Carlos                  ││
-│  │          └───────┘                           ││
-│  │  Initial version. Primary button with        ││
-│  │  Small, Medium, Large size variants.         ││
-│  │                                              ││
-│  │  [ View Details ]  [ Export JSON ]           ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-│  ┌──────────────────────────────────────────────┐│
-│  │  Pending: 1 draft in progress               ││
-│  │  v1.4.0 (draft) by Carlos                   ││
-│  │                    [ View Draft ]            ││
-│  └──────────────────────────────────────────────┘│
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
-**Expanded entry (click "View Details"):**
-
-```
-│  ┌──────────────────────────────────────────────┐│
-│  │  v1.2.0  ┌───────┐  Jan 28, 2026           ││
-│  │  MINOR   │ thumb │  Maria                   ││
-│  │          └───────┘                           ││
-│  │  Added Ghost variant style. Updated          ││
-│  │  documentation links.                        ││
-│  │                                              ││
-│  │  ┌─ Changes vs v1.1.0 ───────────────────┐  ││
-│  │  │  + Added variant: Style=Ghost          │  ││
-│  │  │  + Added documentationLink:            │  ││
-│  │  │    design-system.com/button            │  ││
-│  │  │  ~ Changed description                 │  ││
-│  │  └───────────────────────────────────────┘  ││
-│  │                                              ││
-│  │  ┌─ Audit Trail ─────────────────────────┐  ││
-│  │  │ 10:15  Maria   Created draft          │  ││
-│  │  │ 10:30  Maria   Submitted for review   │  ││
-│  │  │ 11:00  Carlos  Approved               │  ││
-│  │  │ 11:05  Maria   Published as v1.2.0    │  ││
-│  │  └───────────────────────────────────────┘  ││
-│  │                                              ││
-│  │  [ Collapse ]  [ Export JSON ]  [ Restore ] ││
-│  └──────────────────────────────────────────────┘│
-```
-
-#### Navigation Flow
-
-```
-┌─────────────────┐
-│  Component List  │ <-- Default screen
-│    (Screen 1)    │
-└────────┬────────┘
-         │
-         ├── [Create Draft] --> extracts --> saves to Supabase --> goes to ──┐
-         │                                                                   │
-         ├── [View Draft] ──────────────────────────────────────────────────>│
-         │                                                                   v
-         │                                                   ┌──────────────────────┐
-         │                                                   │  Version Detail      │
-         │                                                   │  (Screen 2)          │
-         │                                                   │                      │
-         │                                                   │  Draft -> Review ->  │
-         │                                                   │  Approve -> Publish  │
-         │                                                   └──────────────────────┘
-         │                                                               │
-         │                                                     [< Back]  │
-         │                                                               │
-         ├── [History] ──────────────────────> ┌──────────────────────────┐
-         │                                     │  Version History         │
-         │                                     │  (Screen 3)             │
-         │                                     │                         │
-         │                                     │  Timeline of published  │
-         │                                     │  versions               │
-         │                                     └────────────┬────────────┘
-         │                                                  │
-         │                                  [View Details]  │
-         │                                  navigates to ───┘──> Screen 2
-         │
-         └── [< Back] from any screen returns here
-```
-
-#### Visual Key
-
-```
-Status badge colors:
-  * draft        ->  gray    (neutral, waiting for action)
-  * in_review    ->  blue    (active, someone is looking)
-  * approved     ->  yellow  (ready, needs publish action)
-  * published    ->  green   (done, locked)
-  * rejected     ->  red     (needs revision)
-
-Semver bump badges:
-  PATCH  ->  gray background     (1.2.0 -> 1.2.1)
-  MINOR  ->  blue background     (1.2.0 -> 1.3.0)
-  MAJOR  ->  orange background   (1.2.0 -> 2.0.0)
-
-Diff line prefixes:
-  +  added     (green)
-  ~  changed   (yellow)
-  -  removed   (red)
-```
-
-### 4.3 Shared UI usage
-Import from `@figma-plugins/shared-ui`: Button, Tabs, Modal, Input, Dropdown
-Use `theme` for all styling (colors, spacing, typography, borderRadius)
-
-### 4.3 State management
-React useState hooks (consistent with existing plugins). Key state:
-- `components: ExtractedComponent[]`
-- `versions: ComponentVersion[]`
-- `currentView: 'list' | 'detail' | 'history'`
-- `selectedComponent: string | null`
-- `draftStatus: VersionStatus`
-
-**Files to create:**
-- `plugins/component-changelog/ui.tsx`
+### Screen 4: Version History — NOT STARTED
+- [ ] Timeline of published versions per component
+- [ ] Expand to see diff + audit trail
+- [ ] "Export JSON" button
+- [ ] "Restore" button (future)
 
 ---
 
-## Phase 5: Diff Engine
+## Phase 5: Diff Engine — PARTIAL
 
-### 5.1 JSON diffing
-Use `deep-diff` library to compute property-level diffs between two `JSON_REST_V1` snapshots.
+### Implemented
+- `deep-diff` dependency installed
+- Raw diff computed when creating drafts (stored in `component_versions.diff`)
 
-### 5.2 Human-readable summaries
-Transform raw diffs into readable changelog entries:
-- "Added variant: Size=Large"
-- "Changed fill color from #3B82F6 to #2563EB"
-- "Updated padding from 8px to 12px"
-- "Removed component property: IconRight"
-- "Added drop shadow effect"
+### Not yet implemented
+- [ ] Human-readable diff summaries (transform raw diffs into readable entries)
+- [ ] Diff viewer UI component with color-coded changes
+- [ ] Variant-level change detection ("Added variant: Size=XLarge")
+- [ ] Property-level change descriptions ("Changed fill color from #3B82F6 to #2563EB")
 
-### 5.3 Diff stored on version creation
-When creating a draft, compute diff against latest published version and store in `component_versions.diff`.
+---
+
+## OAuth 2 Flow — COMPLETE (not in original plan)
+
+### Architecture
+1. Plugin UI opens popup to `figma.com/oauth` with state parameter
+2. Figma redirects to Edge Function `figma-oauth-callback` with code + state
+3. Edge Function exchanges code for tokens via Figma API
+4. Edge Function upserts tokens into `figma_tokens` table
+5. Edge Function writes to `oauth_sessions` table with state key
+6. Plugin polls `oauth_sessions` by state every 2s
+7. On match: stores token/fileKey/userName via `figma.clientStorage`, cleans up session row
+8. Session persists across plugin reopens
+
+### Why polling instead of postMessage
+Figma plugin UI runs in a sandboxed iframe. `window.opener.postMessage` from the OAuth popup cannot reach it. Polling the database is the reliable workaround.
+
+### Scopes requested
+All non-Enterprise Figma OAuth scopes: `files:read`, `file_variables:read`, `file_variables:write`, `file_comments:write`, `file_dev_resources:read`, `file_dev_resources:write`, `webhooks:write`, `library_analytics:read`, `org_dev_resources:read`, `org_dev_resources:write`
+
+---
+
+## Next Steps (Priority Order)
+
+### 1. Version Detail Screen — Diff Viewer + Polish
+- Build the human-readable diff engine (Phase 5.2)
+- Add progress stepper UI (draft → review → approved → published)
+- Add thumbnail before/after comparison
+- Add review note input on rejection
+- Add audit trail display
+
+### 2. Version History Screen (Screen 3)
+- Timeline of published versions
+- Expandable entries with diff + audit trail
+- "Export JSON" button to download snapshot
+
+### 3. Component List Polish
+- Search/filter bar
+- Publish status indicator dots
+- Optional thumbnail previews
+
+### 4. Stretch Goals
+- Reconstruction from stored JSON snapshot
+- Bulk "Extract All" action
+- RLS policies for multi-user enforcement
+- Token refresh flow (currently requires re-auth on expiry)
 
 ---
 
@@ -695,27 +260,29 @@ When creating a draft, compute diff against latest published version and store i
 ```bash
 cd plugins/component-changelog
 npm run build
-# Equivalent to:
-# esbuild code.ts --bundle --outfile=code.js --target=es2017
-# esbuild ui.tsx --bundle --outfile=ui.js --target=es2017
-# node inline-ui.js
+# Runs: build:code → build:ui → inline-ui
+# Output: code.js (~8.7kb) + ui.js (~1.5mb) + ui.html (inlined)
 ```
 
 ### Test checklist
-1. **Plugin loads**: Open in Figma, verify UI renders with dark mode support
-2. **Component discovery**: Select components → verify they appear in the list
-3. **Extraction**: Click "Create Draft" → verify JSON_REST_V1 data is captured correctly
-4. **Supabase write**: Verify draft row appears in `component_versions` table
-5. **Thumbnail**: Verify PNG uploads to Supabase Storage
-6. **Approval flow**: Draft → Submit → Approve → Publish — verify status transitions and audit log
-7. **Diff**: Modify a component, create new draft → verify diff highlights changes correctly
-8. **Version history**: Verify timeline shows all published versions with changelogs
-9. **Semver**: Verify version numbers increment correctly based on bump type
-10. **Same-user approval**: Verify one user can complete the full flow (demo mode)
+1. **Plugin loads**: Open in Figma, verify UI renders with dark theme ✅
+2. **OAuth flow**: Connect → popup → poll → auto-advance ✅
+3. **Library setup**: Paste file URL → validate → show component count ✅
+4. **Component discovery**: Plugin API scan with variant grouping ✅
+5. **Extraction**: Click "Create Draft" → JSON_REST_V1 + PNG captured ✅
+6. **Supabase write**: Draft row appears in `component_versions` ✅
+7. **Thumbnail**: PNG uploads to Supabase Storage ✅
+8. **Approval flow**: Draft → Submit → Approve → Publish with semver ✅
+9. **Batch loading**: Version statuses load instantly via single query ✅
+10. **Navigation**: Back from detail preserves component list state ✅
+11. **Diff**: Modify a component, create new draft → verify diff highlights changes ⬜
+12. **Version history**: Timeline of published versions with changelogs ⬜
+13. **Same-user approval**: One user can complete the full flow (demo mode) ✅
 
-### Key existing patterns to reuse
-- `inline-ui.js` — from `plugins/ds-adoption-tracker/inline-ui.js`
-- `theme` + shared components — from `packages/shared-ui`
-- Message typing pattern — discriminated unions from `plugins/ds-adoption-tracker/types.ts`
-- Progress reporting — `sendProgress()` pattern from `plugins/ds-adoption-tracker/code.ts`
-- Build scripts — esbuild config from `plugins/ds-adoption-tracker/package.json`
+### Key patterns used
+- `inline-ui.js` — custom CSS token system (NOT shared-ui)
+- Fonts: JetBrains Mono (headings) + IBM Plex Mono (body)
+- Message typing — discriminated unions (`UIMessage` / `CodeMessage`)
+- Progress reporting — `sendProgress()` pattern
+- Build scripts — esbuild triple-stage pipeline
+- OAuth polling — `oauth_sessions` table + `setInterval`
