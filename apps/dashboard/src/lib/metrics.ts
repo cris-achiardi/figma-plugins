@@ -20,14 +20,15 @@ export async function getComponentSummaries(projectId: string): Promise<{
   status: string;
   thumbnailUrl: string | null;
   updatedAt: string;
+  variantCount: number;
 }[]> {
   const { data } = await supabase
     .from('component_versions')
-    .select('component_key, component_name, version, status, thumbnail_url, updated_at')
+    .select('component_key, component_name, version, status, thumbnail_url, updated_at, variant_count')
     .eq('project_id', projectId)
     .order('updated_at', { ascending: false });
 
-  const versions = (data || []) as ComponentVersion[];
+  const versions = (data || []) as (ComponentVersion & { variant_count: number })[];
 
   // Group by component_key, pick latest meaningful version
   const map = new Map<string, {
@@ -37,6 +38,7 @@ export async function getComponentSummaries(projectId: string): Promise<{
     status: string;
     thumbnailUrl: string | null;
     updatedAt: string;
+    variantCount: number;
   }>();
 
   for (const v of versions) {
@@ -48,6 +50,7 @@ export async function getComponentSummaries(projectId: string): Promise<{
       status: v.status,
       thumbnailUrl: v.thumbnail_url,
       updatedAt: v.updated_at,
+      variantCount: v.variant_count ?? 0,
     });
   }
 

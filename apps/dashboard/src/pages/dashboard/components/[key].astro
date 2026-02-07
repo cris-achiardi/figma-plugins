@@ -3,7 +3,8 @@ export const prerender = false;
 
 import DashboardLayout from '../../../layouts/DashboardLayout.astro';
 import VersionBadge from '../../../components/dashboard/VersionBadge.astro';
-import { getVersionHistory, getLatestPublished } from '../../../lib/data';
+import VersionHistory from '../../../components/dashboard/VersionHistory.tsx';
+import { getVersionHistorySlim, getBatchAuditLogs, getLatestPublished } from '../../../lib/data';
 
 const { key } = Astro.params;
 const projectId = Astro.url.searchParams.get('project') || '';
@@ -14,26 +15,16 @@ if (!key || !projectId) {
 
 const decodedKey = decodeURIComponent(key);
 const [history, latest] = await Promise.all([
-  getVersionHistory(decodedKey, projectId),
+  getVersionHistorySlim(decodedKey, projectId),
   getLatestPublished(decodedKey, projectId),
 ]);
+
+const auditLogs = await getBatchAuditLogs(history.map(v => v.id));
 
 const componentName = history[0]?.component_name || decodedKey;
 const currentVersion = latest?.version || 'No published version';
 const currentStatus = latest?.status || 'draft';
 const thumbnailUrl = latest?.thumbnail_url || history[0]?.thumbnail_url;
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  const weeks = Math.floor(days / 7);
-  return `${weeks}w ago`;
-}
 ---
 
 <DashboardLayout title={`${componentName} — Component Changelog`}>
@@ -52,28 +43,7 @@ function timeAgo(dateStr: string): string {
 
   <section class="history-section">
     <h2>Version History</h2>
-    {history.length === 0 ? (
-      <p class="empty">No versions recorded</p>
-    ) : (
-      <div class="history-list">
-        {history.map((v) => (
-          <div class="history-entry">
-            <div class="entry-version">
-              <span class="version-number">{v.version}</span>
-              {v.bump_type && <span class="bump-type">{v.bump_type}</span>}
-            </div>
-            <div class="entry-details">
-              <span class="changelog">{v.changelog_message || 'No message'}</span>
-              <div class="entry-meta">
-                <VersionBadge status={v.status} />
-                <span class="entry-time">{timeAgo(v.updated_at)}</span>
-                {v.created_by && <span class="entry-author">by {v.created_by}</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
+    <VersionHistory client:load versions={history} auditLogs={auditLogs} />
   </section>
 </DashboardLayout>
 
@@ -132,82 +102,5 @@ function timeAgo(dateStr: string): string {
     font-weight: 600;
     padding: 16px;
     border-bottom: 1px solid var(--border);
-  }
-
-  .history-list {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .history-entry {
-    display: flex;
-    gap: 16px;
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    align-items: flex-start;
-    transition: background 0.15s;
-  }
-
-  .history-entry:hover {
-    background: var(--bg-hover);
-  }
-
-  .history-entry:last-child {
-    border-bottom: none;
-  }
-
-  .entry-version {
-    flex-shrink: 0;
-    min-width: 80px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .version-number {
-    font-family: var(--font-mono);
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  .bump-type {
-    font-size: 11px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-  }
-
-  .entry-details {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .changelog {
-    color: var(--text-primary);
-    font-size: 14px;
-  }
-
-  .entry-meta {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .entry-time {
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-
-  .entry-author {
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-
-  .empty {
-    color: var(--text-muted);
-    text-align: center;
-    padding: 48px 16px;
   }
 </style>

@@ -116,6 +116,32 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     text-decoration: none;
   }
 
+  body.modal-open {
+    overflow: hidden;
+  }
+
+  .thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
   /* Global utility classes for React components */
   .component-table {
     width: 100%;
