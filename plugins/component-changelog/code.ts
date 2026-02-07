@@ -35,6 +35,7 @@ function sendProgress(message: string, percent: number) {
 function sendError(message: string) {
   const msg: CodeMessage = { type: 'error', message };
   figma.ui.postMessage(msg);
+  figma.notify(message, { error: true });
 }
 
 // Get component name (handles variants by getting component set name)
@@ -119,6 +120,7 @@ async function extractSelected(nodeIds: string[]) {
     sendProgress('Extraction complete!', 100);
     const msg: CodeMessage = { type: 'extraction-complete', components: extracted };
     figma.ui.postMessage(msg);
+    figma.notify(`Extracted ${extracted.length} component${extracted.length === 1 ? '' : 's'}`);
   } catch (error) {
     sendError(`Extraction failed: ${error}`);
   }
@@ -169,6 +171,7 @@ async function extractSingle(nodeId: string) {
     sendProgress('Done!', 100);
     const msg: CodeMessage = { type: 'extraction-complete', components: [extracted] };
     figma.ui.postMessage(msg);
+    figma.notify(`Extracted "${name}"`);
   } catch (error) {
     sendError(`Extraction failed: ${error}`);
   }
@@ -248,6 +251,7 @@ async function scanLocalComponents() {
     sendProgress('Scan complete!', 100);
     const msg: CodeMessage = { type: 'local-components', groups };
     figma.ui.postMessage(msg);
+    figma.notify(`Found ${groups.length} component${groups.length === 1 ? '' : 's'}`);
   } catch (error) {
     sendError(`Scan failed: ${error}`);
   }
@@ -295,6 +299,16 @@ figma.ui.onmessage = async (msg: UIMessage) => {
         });
         const done: CodeMessage = { type: 'reconstruct-complete', nodeId: result.nodeId, warnings: result.warnings };
         figma.ui.postMessage(done);
+        const warnCount = result.warnings.length;
+        figma.notify(
+          warnCount > 0
+            ? `Restored "${msg.componentName}" with ${warnCount} warning${warnCount === 1 ? '' : 's'}`
+            : `Restored "${msg.componentName}"`,
+          {
+            timeout: warnCount > 0 ? 5000 : 3000,
+            button: { text: 'Select', action: () => { navigateToNode(result.nodeId); return true; } },
+          }
+        );
       } catch (err) {
         sendError(`Reconstruction failed: ${err}`);
       }
