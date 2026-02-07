@@ -338,6 +338,16 @@ figma.ui.onmessage = async (msg: UIMessage) => {
     case 'scan-local-components':
       await scanLocalComponents();
       break;
+    case 'resize':
+      figma.ui.resize(480, msg.height);
+      break;
+    case 'save-version-history':
+      figma.saveVersionHistoryAsync(msg.title, msg.description).catch(() => {});
+      figma.notify(msg.title);
+      break;
+    case 'notify':
+      figma.notify(msg.message);
+      break;
     case 'reconstruct-copy': {
       try {
         const result = await reconstructFromSnapshot(msg.snapshot, {

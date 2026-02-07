@@ -147,7 +147,10 @@ export type UIMessage =
   | { type: 'load-settings' }
   | { type: 'clear-settings' }
   | { type: 'reconstruct-copy'; snapshot: any; componentName: string }
-  | { type: 'scan-local-components' };
+  | { type: 'scan-local-components' }
+  | { type: 'resize'; height: number }
+  | { type: 'save-version-history'; title: string; description?: string }
+  | { type: 'notify'; message: string };
 
 // Messages: Code -> UI
 export type CodeMessage =

@@ -1368,6 +1368,7 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
     await submitForReview(version.id, userName, photoUrl || undefined);
     await reload();
     setLoading(false);
+    postToCode({ type: 'notify', message: `Submitted "${version.component_name}" for review` });
   };
 
   const handleApprove = async () => {
@@ -1376,6 +1377,7 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
     await approveVersion(version.id, userName, photoUrl || undefined);
     await reload();
     setLoading(false);
+    postToCode({ type: 'notify', message: `Approved "${version.component_name}"` });
   };
 
   const handleReject = async () => {
@@ -1384,6 +1386,7 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
     await rejectVersion(version.id, userName, reviewNote || undefined, photoUrl || undefined);
     await reload();
     setLoading(false);
+    postToCode({ type: 'notify', message: `Rejected "${version.component_name}"` });
   };
 
   const handlePublish = async () => {
@@ -1394,6 +1397,18 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
     const log = await getAuditLog(published.id);
     setAuditLog(log as AuditEntry[]);
     setLoading(false);
+    const descParts: string[] = [];
+    if (published.changelog_message) descParts.push(published.changelog_message);
+    const added = diffLines.filter(l => l.type === 'added').length;
+    const removed = diffLines.filter(l => l.type === 'removed').length;
+    const changed = diffLines.filter(l => l.type === 'changed').length;
+    const summary = [added && `+${added} added`, removed && `-${removed} removed`, changed && `~${changed} changed`].filter(Boolean).join(', ');
+    if (summary) descParts.push(`Changes: ${summary}`);
+    postToCode({
+      type: 'save-version-history',
+      title: `Published ${version.component_name} v${published.version}`,
+      description: descParts.join('\n\n') || undefined,
+    });
   };
 
   if (!version) {
@@ -1841,6 +1856,21 @@ function LibraryReleaseScreen({ projectId, userName, onBack, onPublished }: {
     try {
       const release = await publishLibraryVersion(projectId, bumpType, releaseNotes, userName);
       onPublished(release);
+      const descParts: string[] = [];
+      if (release.changelog_message) descParts.push(release.changelog_message);
+      if (changelog.length > 0) {
+        const lines = changelog.map(c => {
+          const prefix = c.change_type === 'added' ? '+' : c.change_type === 'removed' ? '-' : '~';
+          const ver = c.to_version ? ` v${c.to_version}` : '';
+          return `${prefix} ${c.component_name}${ver}`;
+        });
+        descParts.push(lines.join('\n'));
+      }
+      postToCode({
+        type: 'save-version-history',
+        title: `Library Release v${release.version}`,
+        description: descParts.join('\n\n') || undefined,
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to publish release');
       setPublishing(false);
