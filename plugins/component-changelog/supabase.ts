@@ -196,6 +196,37 @@ export async function getActiveDraft(
   return (data as ComponentVersion) || null;
 }
 
+// Batch fetch all version statuses for a project in one query
+export async function getProjectVersionMaps(
+  projectId: string
+): Promise<{
+  versionMap: Record<string, ComponentVersion | null>;
+  draftMap: Record<string, ComponentVersion | null>;
+}> {
+  const { data } = await supabase
+    .from('component_versions')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+
+  const versions = (data as ComponentVersion[]) || [];
+  const versionMap: Record<string, ComponentVersion | null> = {};
+  const draftMap: Record<string, ComponentVersion | null> = {};
+
+  for (const v of versions) {
+    // Latest published per component
+    if (v.status === 'published' && !versionMap[v.component_key]) {
+      versionMap[v.component_key] = v;
+    }
+    // Latest active draft per component
+    if (['draft', 'in_review', 'approved'].includes(v.status) && !draftMap[v.component_key]) {
+      draftMap[v.component_key] = v;
+    }
+  }
+
+  return { versionMap, draftMap };
+}
+
 export async function getVersionById(versionId: string): Promise<ComponentVersion | null> {
   const { data } = await supabase
     .from('component_versions')

@@ -13,7 +13,7 @@ import {
   approveVersion, rejectVersion, publishVersion,
   getVersionHistory, getLatestPublished, getActiveDraft,
   getVersionById, uploadThumbnail, getAuditLog,
-  computeVersion,
+  computeVersion, getProjectVersionMaps,
 } from './supabase';
 import { getMe, getFileComponents, getLibraryInfo } from './figma-api';
 
@@ -410,13 +410,14 @@ function LibrarySetupScreen({ token, onLibraryConnected, onDisconnect }: {
 // ── Screen: Library Components ───────────────────────
 
 function LibraryComponentsScreen({
-  token, fileKey, libraryName, userName,
+  token, fileKey, libraryName, userName, projectId,
   onViewDetail, onViewHistory, onChangeLibrary, onDisconnect,
 }: {
   token: string;
   fileKey: string;
   libraryName: string;
   userName: string;
+  projectId: string;
   onViewDetail: (comp: ExtractedComponent) => void;
   onViewHistory: (comp: ExtractedComponent) => void;
   onChangeLibrary: () => void;
@@ -427,29 +428,19 @@ function LibraryComponentsScreen({
   const [search, setSearch] = React.useState('');
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [projectId, setProjectId] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [extracting, setExtracting] = React.useState(false);
   const [progress, setProgress] = React.useState({ percent: 0, message: '' });
   const [extracted, setExtracted] = React.useState<ExtractedComponent[]>([]);
+  const [creatingDraft, setCreatingDraft] = React.useState<string | null>(null);
   const [versionMap, setVersionMap] = React.useState<Record<string, ComponentVersion | null>>({});
   const [draftMap, setDraftMap] = React.useState<Record<string, ComponentVersion | null>>({});
 
   // Scan local components via Plugin API
   React.useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const project = await getOrCreateProject(libraryName, fileKey);
-        setProjectId(project.id);
-        // Request scan from code.ts
-        postToCode({ type: 'scan-local-components' });
-      } catch (err: any) {
-        setError(err.message || 'Failed to initialize.');
-        setLoading(false);
-      }
-    })();
-  }, [fileKey, token]);
+    setLoading(true);
+    postToCode({ type: 'scan-local-components' });
+  }, [fileKey]);
 
   // Listen for local-components message from code.ts
   React.useEffect(() => {
@@ -467,35 +458,25 @@ function LibraryComponentsScreen({
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  // Fetch version data when we have projectId and groups
-  React.useEffect(() => {
-    if (!projectId || localGroups.length === 0) return;
-    (async () => {
-      const vm: Record<string, ComponentVersion | null> = {};
-      const dm: Record<string, ComponentVersion | null> = {};
-      for (const g of localGroups) {
-        vm[g.key] = await getLatestPublished(g.key, projectId).catch(() => null);
-        dm[g.key] = await getActiveDraft(g.key, projectId).catch(() => null);
-      }
+  // Fetch all version data in one batch query
+  const refreshVersionMaps = React.useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const { versionMap: vm, draftMap: dm } = await getProjectVersionMaps(projectId);
       setVersionMap(vm);
       setDraftMap(dm);
-    })();
-  }, [projectId, localGroups]);
+    } catch (e) {
+      console.error('Failed to load version data:', e);
+    }
+  }, [projectId]);
 
-  // Fetch version data for extracted components too
   React.useEffect(() => {
-    if (!projectId || extracted.length === 0) return;
-    (async () => {
-      const vm: Record<string, ComponentVersion | null> = {};
-      const dm: Record<string, ComponentVersion | null> = {};
-      for (const c of extracted) {
-        vm[c.key] = await getLatestPublished(c.key, projectId).catch(() => null);
-        dm[c.key] = await getActiveDraft(c.key, projectId).catch(() => null);
-      }
-      setVersionMap(prev => ({ ...prev, ...vm }));
-      setDraftMap(prev => ({ ...prev, ...dm }));
-    })();
-  }, [projectId, extracted]);
+    if (localGroups.length > 0) refreshVersionMaps();
+  }, [localGroups, refreshVersionMaps]);
+
+  React.useEffect(() => {
+    if (extracted.length > 0) refreshVersionMaps();
+  }, [extracted, refreshVersionMaps]);
 
   // Listen for extraction messages from code.ts
   React.useEffect(() => {
@@ -558,6 +539,7 @@ function LibraryComponentsScreen({
 
   const handleCreateDraft = async (comp: ExtractedComponent) => {
     if (!projectId) return;
+    setCreatingDraft(comp.key);
     try {
       const latest = versionMap[comp.key];
       const diffLines = latest ? deepDiff(latest.snapshot, comp.snapshot) : null;
@@ -577,12 +559,12 @@ function LibraryComponentsScreen({
         createdBy: userName,
       });
 
-      // Refresh draft map
-      const draft = await getActiveDraft(comp.key, projectId);
-      setDraftMap(prev => ({ ...prev, [comp.key]: draft }));
+      await refreshVersionMaps();
       onViewDetail(comp);
     } catch (err: any) {
       console.error('Create draft failed:', err);
+    } finally {
+      setCreatingDraft(null);
     }
   };
 
@@ -860,7 +842,13 @@ function LibraryComponentsScreen({
                     {hasDraft ? (
                       <button style={s.btnPrimary} onClick={() => onViewDetail(comp)}>view draft</button>
                     ) : (
-                      <button style={s.btnSecondary} onClick={() => handleCreateDraft(comp)}>create draft</button>
+                      <button
+                        style={{ ...s.btnSecondary, opacity: creatingDraft === comp.key ? 0.5 : 1 }}
+                        onClick={() => handleCreateDraft(comp)}
+                        disabled={creatingDraft !== null}
+                      >
+                        {creatingDraft === comp.key ? 'creating...' : 'create draft'}
+                      </button>
                     )}
                     {latest && (
                       <button style={s.btnGhost} onClick={() => onViewHistory(comp)}>history</button>
@@ -1364,13 +1352,16 @@ function App() {
     setView({ screen: 'library-setup' });
   };
 
-  const handleLibraryConnected = (fileKey: string, name: string) => {
+  const handleLibraryConnected = async (fileKey: string, name: string) => {
     setLibraryFileKey(fileKey);
     setLibraryName(name);
     postToCode({ type: 'save-settings', token: figmaToken!, fileKey, userName });
-    getOrCreateProject(name, fileKey)
-      .then(p => setProjectId(p.id))
-      .catch(console.error);
+    try {
+      const p = await getOrCreateProject(name, fileKey);
+      setProjectId(p.id);
+    } catch (e) {
+      console.error('Failed to create project:', e);
+    }
     setView({ screen: 'library' });
   };
 
@@ -1405,12 +1396,13 @@ function App() {
           />
         )}
 
-        {view.screen === 'library' && figmaToken && libraryFileKey && (
+        {view.screen === 'library' && figmaToken && libraryFileKey && projectId && (
           <LibraryComponentsScreen
             token={figmaToken}
             fileKey={libraryFileKey}
             libraryName={libraryName}
             userName={userName}
+            projectId={projectId}
             onViewDetail={(comp) => setView({ screen: 'detail', comp })}
             onViewHistory={(comp) => setView({ screen: 'history', comp })}
             onChangeLibrary={handleChangeLibrary}
