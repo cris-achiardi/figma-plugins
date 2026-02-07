@@ -1,9 +1,26 @@
 ---
+import ProjectSelector from '../components/dashboard/ProjectSelector.tsx';
+import { getProjects } from '../lib/metrics';
+import { getLatestLibraryVersion } from '../lib/data';
+
 interface Props {
   title?: string;
 }
 
 const { title = 'Dashboard — Component Changelog' } = Astro.props;
+
+const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
+const projects = await getProjects();
+const projectId = Astro.url.searchParams.get('project') || projects.find(p => p.id === WEAVE_ID)?.id || projects[0]?.id || '';
+
+const versionEntries = await Promise.all(
+  projects.map(async (p) => {
+    const lv = await getLatestLibraryVersion(p.id);
+    return { id: p.id, version: lv?.version || null };
+  })
+);
+const versionMap: Record<string, string | null> = {};
+for (const v of versionEntries) versionMap[v.id] = v.version;
 ---
 
 <!doctype html>
@@ -12,16 +29,35 @@ const { title = 'Dashboard — Component Changelog' } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
+    <link rel="icon" type="image/png" href="/assets/img/ds-git favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css"
       rel="stylesheet"
     />
   </head>
   <body>
     <nav class="nav">
-      <a href="/" class="nav-brand">Component Changelog</a>
+      <div class="nav-left">
+        <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="nav-logo" />
+        <a href="/" class="nav-brand">Demo</a>
+        <span class="nav-separator">/</span>
+        <ProjectSelector
+          client:load
+          projects={projects}
+          currentProjectId={projectId}
+          versions={versionMap}
+        />
+      </div>
       <div class="nav-links">
         <a href="/dashboard" class="nav-link">Overview</a>
         <a href="/dashboard/audit" class="nav-link">Activity</a>
@@ -35,20 +71,24 @@ const { title = 'Dashboard — Component Changelog' } = Astro.props;
 
 <style is:global>
   :root {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-tertiary: #0f3460;
-    --bg-surface: #1e2a45;
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --text-muted: #6b7280;
-    --accent: #00d4aa;
-    --accent-dim: #00a88a;
-    --diff-added: #2ea043;
-    --diff-removed: #f85149;
-    --border: #2a3a5c;
-    --font-heading: 'JetBrains Mono', monospace;
-    --font-body: 'IBM Plex Mono', monospace;
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #141414;
+    --bg-surface: #141414;
+    --bg-hover: #1c1c1c;
+    --text-primary: #f5f5f4;
+    --text-secondary: #a8a29e;
+    --text-muted: #78716c;
+    --accent: #f5f5f4;
+    --border: #292524;
+    --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'Geist Mono', 'Menlo', monospace;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --color-error: #f87171;
+    --color-info: #60a5fa;
   }
 
   * {
@@ -58,18 +98,97 @@ const { title = 'Dashboard — Component Changelog' } = Astro.props;
   }
 
   html {
-    font-family: var(--font-body);
+    font-family: var(--font-sans);
+    font-size: 14px;
     color: var(--text-primary);
     background: var(--bg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   a {
-    color: var(--accent);
+    color: var(--text-secondary);
     text-decoration: none;
   }
 
   a:hover {
-    text-decoration: underline;
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  /* Global utility classes for React components */
+  .component-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-sans);
+    font-size: 14px;
+  }
+
+  .component-table th {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .component-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .component-table tbody tr {
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .component-table tbody tr:hover {
+    background: var(--bg-hover);
+  }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .status-pill--published {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+  }
+
+  .status-pill--draft {
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+  }
+
+  .status-pill--in_review {
+    color: #60a5fa;
+    background: rgba(96, 165, 250, 0.1);
+  }
+
+  .status-pill--approved {
+    color: #4ade80;
+    background: rgba(74, 222, 128, 0.1);
+  }
+
+  .status-pill--deprecated {
+    color: #78716c;
+    background: rgba(120, 113, 108, 0.1);
+  }
+
+  .empty-state {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 48px 16px;
   }
 </style>
 
@@ -78,41 +197,58 @@ const { title = 'Dashboard — Component Changelog' } = Astro.props;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 2rem;
+    padding: 0 24px;
+    height: 48px;
     border-bottom: 1px solid var(--border);
-    background: var(--bg-secondary);
+    background: var(--bg-primary);
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nav-logo {
+    height: 24px;
+    width: auto;
   }
 
   .nav-brand {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: 600;
+    font-size: 14px;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
 
   .nav-brand:hover {
-    text-decoration: none;
-    color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .nav-separator {
+    color: var(--text-muted);
+    font-size: 14px;
+    user-select: none;
   }
 
   .nav-links {
     display: flex;
-    gap: 1.5rem;
+    gap: 24px;
   }
 
   .nav-link {
-    font-size: 0.875rem;
+    font-size: 14px;
     color: var(--text-secondary);
+    transition: color 0.15s;
   }
 
   .nav-link:hover {
-    color: var(--accent);
-    text-decoration: none;
+    color: var(--text-primary);
   }
 
   .dashboard-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 32px;
   }
 </style>

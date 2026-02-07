@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ComponentSummary {
   key: string;
@@ -15,14 +16,6 @@ interface Props {
 }
 
 type SortField = 'name' | 'status' | 'updatedAt';
-
-const statusColors: Record<string, string> = {
-  published: '#2ea043',
-  draft: '#f0883e',
-  in_review: '#58a6ff',
-  approved: '#00d4aa',
-  deprecated: '#6b7280',
-};
 
 const statusLabels: Record<string, string> = {
   published: 'published',
@@ -47,8 +40,18 @@ function timeAgo(dateStr: string): string {
 export default function ComponentTable({ components, projectId }: Props) {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortAsc, setSortAsc] = useState(true);
+  const [search, setSearch] = useState('');
+  const [portalTarget, setPortalTarget] = useState<Element | null>(null);
 
-  const sorted = [...components].sort((a, b) => {
+  useEffect(() => {
+    setPortalTarget(document.getElementById('search-slot'));
+  }, []);
+
+  const filtered = components.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const sorted = [...filtered].sort((a, b) => {
     let cmp = 0;
     if (sortField === 'name') cmp = a.name.localeCompare(b.name);
     else if (sortField === 'status') cmp = a.status.localeCompare(b.status);
@@ -67,110 +70,89 @@ export default function ComponentTable({ components, projectId }: Props) {
   }
 
   if (components.length === 0) {
-    return (
-      <div style={{ color: 'var(--text-muted)', padding: '2rem', textAlign: 'center' }}>
-        No components tracked yet
-      </div>
-    );
+    return <div className="empty-state">No components tracked yet</div>;
   }
 
+  const searchInput = (
+    <div style={{ position: 'relative' }}>
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--text-muted)',
+          pointerEvents: 'none',
+        }}
+      >
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input
+        type="text"
+        placeholder="Search components..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{
+          width: '100%',
+          background: 'var(--bg-secondary)',
+          color: 'var(--text-primary)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '8px 12px 8px 34px',
+          fontFamily: 'var(--font-sans)',
+          fontSize: '14px',
+          outline: 'none',
+        }}
+      />
+    </div>
+  );
+
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{
-        width: '100%',
-        borderCollapse: 'collapse',
-        fontFamily: 'var(--font-body)',
-        fontSize: '0.875rem',
-      }}>
-        <thead>
-          <tr>
-            {(['name', 'status', 'updatedAt'] as SortField[]).map((field) => (
-              <th
-                key={field}
-                onClick={() => handleSort(field)}
-                style={{
-                  textAlign: 'left',
-                  padding: '0.75rem 1rem',
-                  borderBottom: '1px solid var(--border)',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.75rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
-              >
-                {field === 'updatedAt' ? 'Updated' : field}
-                {sortIndicator(field)}
-              </th>
-            ))}
-            <th style={{
-              textAlign: 'left',
-              padding: '0.75rem 1rem',
-              borderBottom: '1px solid var(--border)',
-              color: 'var(--text-secondary)',
-              fontSize: '0.75rem',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-            }}>
-              Version
-            </th>
-          </tr>
-        </thead>
+    <>
+      {portalTarget && createPortal(searchInput, portalTarget)}
+      <table className="component-table">
         <tbody>
+          {sorted.length === 0 && (
+            <tr>
+              <td colSpan={4} style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '32px 16px' }}>
+                No matches for &ldquo;{search}&rdquo;
+              </td>
+            </tr>
+          )}
           {sorted.map((c) => (
             <tr
               key={c.key}
               onClick={() => {
                 window.location.href = `/dashboard/components/${encodeURIComponent(c.key)}?project=${projectId}`;
               }}
-              style={{ cursor: 'pointer' }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'var(--bg-surface)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'transparent';
-              }}
             >
-              <td style={{
-                padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border)',
-                color: 'var(--text-primary)',
-                fontWeight: 500,
-              }}>
+              <td style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                 {c.name}
               </td>
-              <td style={{
-                padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                <span style={{
-                  color: statusColors[c.status] || 'var(--text-muted)',
-                  fontSize: '0.8rem',
-                }}>
+              <td>
+                <span className={`status-pill status-pill--${c.status}`}>
                   {statusLabels[c.status] || c.status}
                 </span>
               </td>
-              <td style={{
-                padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border)',
-                color: 'var(--text-muted)',
-              }}>
+              <td style={{ color: 'var(--text-muted)' }}>
                 {timeAgo(c.updatedAt)}
               </td>
-              <td style={{
-                padding: '0.75rem 1rem',
-                borderBottom: '1px solid var(--border)',
-                color: 'var(--text-secondary)',
-                fontFamily: 'var(--font-heading)',
-                fontSize: '0.8rem',
-              }}>
+              <td style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>
                 {c.latestVersion}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }

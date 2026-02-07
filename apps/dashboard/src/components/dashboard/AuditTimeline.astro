@@ -16,11 +16,11 @@ interface Props {
 const { entries } = Astro.props;
 
 const actionConfig: Record<string, { icon: string; label: string; color: string }> = {
-  created: { icon: '+', label: 'draft created', color: '#f0883e' },
-  submitted_for_review: { icon: '>', label: 'submitted for review', color: '#58a6ff' },
-  approved: { icon: '\u2713', label: 'approved', color: '#00d4aa' },
-  published: { icon: '\u2605', label: 'published', color: '#2ea043' },
-  rejected: { icon: '\u2717', label: 'rejected', color: '#f85149' },
+  created: { icon: '+', label: 'draft created', color: '#fbbf24' },
+  submitted_for_review: { icon: '>', label: 'submitted for review', color: '#60a5fa' },
+  approved: { icon: '\u2713', label: 'approved', color: '#4ade80' },
+  published: { icon: '\u2605', label: 'published', color: '#4ade80' },
+  rejected: { icon: '\u2717', label: 'rejected', color: '#f87171' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -68,15 +68,20 @@ function timeAgo(dateStr: string): string {
   .empty {
     color: var(--text-muted);
     text-align: center;
-    padding: 2rem;
+    padding: 48px 16px;
   }
 
   .timeline-entry {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
-    padding: 0.75rem 0;
+    gap: 12px;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  .timeline-entry:hover {
+    background: var(--bg-hover);
   }
 
   .timeline-entry:last-child {
@@ -92,7 +97,7 @@ function timeAgo(dateStr: string): string {
     justify-content: center;
     border: 1px solid;
     border-radius: 50%;
-    font-size: 0.7rem;
+    font-size: 11px;
     font-weight: 700;
     margin-top: 2px;
   }
@@ -102,8 +107,8 @@ function timeAgo(dateStr: string): string {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.375rem;
-    font-size: 0.875rem;
+    gap: 6px;
+    font-size: 14px;
   }
 
   .component-name {
@@ -112,9 +117,9 @@ function timeAgo(dateStr: string): string {
   }
 
   .version {
-    color: var(--accent);
-    font-family: var(--font-heading);
-    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 13px;
   }
 
   .action {
@@ -123,14 +128,14 @@ function timeAgo(dateStr: string): string {
 
   .note {
     color: var(--text-muted);
-    font-size: 0.8rem;
+    font-size: 13px;
     width: 100%;
   }
 
   .time {
     flex-shrink: 0;
     color: var(--text-muted);
-    font-size: 0.75rem;
+    font-size: 12px;
     white-space: nowrap;
   }
 </style>

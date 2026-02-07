@@ -3,7 +3,6 @@ export const prerender = false;
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import MetricCard from '../../components/dashboard/MetricCard.astro';
-import ProjectSelector from '../../components/dashboard/ProjectSelector.tsx';
 import ComponentTable from '../../components/dashboard/ComponentTable.tsx';
 import {
   getProjects,
@@ -14,8 +13,11 @@ import {
 } from '../../lib/metrics';
 import { getLatestLibraryVersion } from '../../lib/data';
 
+const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
 const projects = await getProjects();
-const projectId = Astro.url.searchParams.get('project') || projects[0]?.id || '';
+const projectId = Astro.url.searchParams.get('project') || projects.find(p => p.id === WEAVE_ID)?.id || projects[0]?.id || '';
+const currentProject = projects.find(p => p.id === projectId);
+const figmaUrl = projectId === WEAVE_ID && currentProject?.figma_file_key ? `https://www.figma.com/file/${currentProject.figma_file_key}` : null;
 
 let coverage = 0;
 let drift = 0;
@@ -37,13 +39,20 @@ if (projectId) {
 ---
 
 <DashboardLayout title="Dashboard — Component Changelog">
-  <div class="header">
+  <div class="heading">
     <h1>Health Overview</h1>
-    <ProjectSelector
-      client:load
-      projects={projects}
-      currentProjectId={projectId}
-    />
+    {figmaUrl && (
+      <a href={figmaUrl} target="_blank" rel="noopener noreferrer" class="figma-link">
+        <svg width="14" height="14" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 28.5C19 23.2533 23.2533 19 28.5 19C33.7467 19 38 23.2533 38 28.5C38 33.7467 33.7467 38 28.5 38C23.2533 38 19 33.7467 19 28.5Z" fill="currentColor"/>
+          <path d="M0 47.5C0 42.2533 4.25329 38 9.5 38H19V47.5C19 52.7467 14.7467 57 9.5 57C4.25329 57 0 52.7467 0 47.5Z" fill="currentColor"/>
+          <path d="M19 0V19H28.5C33.7467 19 38 14.7467 38 9.5C38 4.25329 33.7467 0 28.5 0H19Z" fill="currentColor"/>
+          <path d="M0 9.5C0 14.7467 4.25329 19 9.5 19H19V0H9.5C4.25329 0 0 4.25329 0 9.5Z" fill="currentColor"/>
+          <path d="M0 28.5C0 33.7467 4.25329 38 9.5 38H19V19H9.5C4.25329 19 0 23.2533 0 28.5Z" fill="currentColor"/>
+        </svg>
+        Open in Figma
+      </a>
+    )}
   </div>
 
   {!projectId ? (
@@ -53,62 +62,108 @@ if (projectId) {
       <div class="metrics">
         <MetricCard label="Coverage" value={`${coverage}%`} />
         <MetricCard label="Drafts" value={drift} />
-        <MetricCard label="Versions" value={publishedCount} />
+        <MetricCard label="Components" value={publishedCount} />
         <MetricCard label="Latest Release" value={latestRelease} />
       </div>
 
-      <section class="table-section">
-        <h2>Components</h2>
+      <h2 class="section-heading">Components</h2>
+      <div id="search-slot" class="search-slot"></div>
+      <div class="table-scroll">
         <ComponentTable
           client:load
           components={components}
           projectId={projectId}
         />
-      </section>
+      </div>
     </>
   )}
 </DashboardLayout>
 
 <style>
-  .header {
+  .heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    gap: 1rem;
+    margin-bottom: 32px;
   }
 
   h1 {
-    font-family: var(--font-heading);
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .figma-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .figma-link:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
   }
 
   .metrics {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin-bottom: 2rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
   }
 
-  .table-section {
+  @media (max-width: 768px) {
+    .metrics {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .section-heading {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .search-slot {
+    margin-bottom: 16px;
+  }
+
+  .table-scroll {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     overflow: hidden;
+    max-height: 410px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 
-  .table-section h2 {
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    padding: 1rem;
-    border-bottom: 1px solid var(--border);
+  .table-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
   }
 
   .empty {
     color: var(--text-muted);
     text-align: center;
-    padding: 4rem;
+    padding: 64px 16px;
   }
 </style>
