@@ -17,7 +17,7 @@ import {
   getLatestLibraryVersion, getLibraryVersionHistory, getLibraryVersionComponents,
   computeLibraryChangelog, publishLibraryVersion, getLibraryVersionChangelog,
 } from './supabase';
-import { getMe, getFileComponents, getLibraryInfo } from './figma-api';
+import { getFileComponents, getLibraryInfo } from './figma-api';
 
 // ── Constants ────────────────────────────────────────
 
@@ -401,6 +401,8 @@ function AuthScreen({ onAuthenticated }: {
   onAuthenticated: (token: string, userName: string) => void;
 }) {
   const [error, setError] = React.useState<string | null>(null);
+  const [showPat, setShowPat] = React.useState(false);
+  const [patInput, setPatInput] = React.useState('');
 
   const handleConnect = () => {
     setError(null);
@@ -438,6 +440,14 @@ function AuthScreen({ onAuthenticated }: {
     }, 2000);
   };
 
+  const handlePatConnect = () => {
+    const trimmed = patInput.replace(/[^\x20-\x7E]/g, '').trim();
+    if (!trimmed) return;
+    // Skip validation here — token will be validated on Library Setup
+    // when getLibraryInfo is called. User name comes from figma.currentUser.
+    onAuthenticated(trimmed, '');
+  };
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -450,9 +460,51 @@ function AuthScreen({ onAuthenticated }: {
         component versions across libraries
       </span>
 
-      <button style={{ ...s.btnPrimary, padding: '12px 32px' }} onClick={handleConnect}>
-        $ connect_with_figma
-      </button>
+      {!showPat ? (
+        <>
+          <button style={{ ...s.btnPrimary, padding: '12px 32px' }} onClick={handleConnect}>
+            $ connect_with_figma
+          </button>
+          <button
+            style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-tertiary)', padding: '4px 8px' }}
+            onClick={() => { setShowPat(true); setError(null); }}
+          >
+            or use a personal access token
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 320 }}>
+            <input
+              type="password"
+              placeholder="figd_..."
+              value={patInput}
+              onChange={e => setPatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handlePatConnect()}
+              style={{
+                ...s.body, flex: 1, fontSize: 11, padding: '8px 12px',
+                background: 'var(--bg-tertiary)', border: '1px solid var(--border)',
+                borderRadius: 6, color: 'var(--text-primary)', outline: 'none',
+              }}
+            />
+            <button
+              style={{ ...s.btnPrimary, padding: '8px 16px' }}
+              onClick={handlePatConnect}
+            >
+              $ connect
+            </button>
+          </div>
+          <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+            generate at figma.com {'>'} settings {'>'} personal access tokens
+          </span>
+          <button
+            style={{ ...s.btnGhost, fontSize: 10, color: 'var(--text-tertiary)', padding: '4px 8px' }}
+            onClick={() => { setShowPat(false); setError(null); }}
+          >
+            back to OAuth
+          </button>
+        </>
+      )}
 
       {error && (
         <span style={{ ...s.body, fontSize: 11, color: 'var(--diff-removed)', textAlign: 'center' }}>
@@ -460,9 +512,11 @@ function AuthScreen({ onAuthenticated }: {
         </span>
       )}
 
-      <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
-        grants read-only access to your files
-      </span>
+      {!showPat && (
+        <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.5 }}>
+          grants read-only access to your files
+        </span>
+      )}
     </div>
   );
 }
@@ -2072,8 +2126,8 @@ function App() {
 
   const handleAuthenticated = (token: string, name: string) => {
     setFigmaToken(token);
-    setUserName(name);
-    postToCode({ type: 'save-settings', token, fileKey: '', userName: name });
+    if (name) setUserName(name);
+    postToCode({ type: 'save-settings', token, fileKey: '', userName: name || userName });
     setView({ screen: 'library-setup' });
   };
 

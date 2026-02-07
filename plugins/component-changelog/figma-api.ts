@@ -3,8 +3,11 @@ import type { FigmaUser, LibraryInfo, LibraryComponent } from './types';
 const BASE = 'https://api.figma.com/v1';
 
 async function figmaFetch(path: string, token: string): Promise<any> {
+  const isPat = token.startsWith('figd_');
   const res = await fetch(`${BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: isPat
+      ? { 'X-Figma-Token': token }
+      : { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
     const text = await res.text();
