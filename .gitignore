@@ -12,6 +12,10 @@ plugins/*/ui.html
 packages/*/dist/
 packages/*/*.tsbuildinfo
 
+# Build outputs - Astro apps
+apps/*/dist/
+apps/*/.astro/
+
 # OS files
 .DS_Store
 Thumbs.db
