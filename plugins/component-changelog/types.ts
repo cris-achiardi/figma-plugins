@@ -146,7 +146,8 @@ export type UIMessage =
   | { type: 'save-settings'; token: string; fileKey: string; userName: string }
   | { type: 'load-settings' }
   | { type: 'clear-settings' }
-  | { type: 'reconstruct'; snapshot: any }
+  | { type: 'reconstruct-copy'; snapshot: any; componentName: string }
+  | { type: 'reconstruct-modify'; snapshot: any; nodeId: string }
   | { type: 'scan-local-components' };
 
 // Messages: Code -> UI
@@ -156,4 +157,6 @@ export type CodeMessage =
   | { type: 'extraction-complete'; components: ExtractedComponent[] }
   | { type: 'extraction-progress'; message: string; percent: number }
   | { type: 'local-components'; groups: LocalComponentGroup[] }
+  | { type: 'reconstruct-progress'; message: string; percent: number }
+  | { type: 'reconstruct-complete'; nodeId: string; warnings: string[] }
   | { type: 'error'; message: string };

@@ -1,4 +1,5 @@
 import { ExtractedComponent, LocalComponentGroup, UIMessage, CodeMessage } from './types';
+import { reconstructFromSnapshot } from './reconstruct';
 
 // Show UI
 figma.showUI(__html__, { width: 480, height: 640 });
@@ -283,9 +284,40 @@ figma.ui.onmessage = async (msg: UIMessage) => {
     case 'scan-local-components':
       await scanLocalComponents();
       break;
-    case 'reconstruct':
-      sendError('Reconstruction not yet implemented.');
+    case 'reconstruct-copy': {
+      try {
+        const result = await reconstructFromSnapshot(msg.snapshot, {
+          mode: 'copy',
+          componentName: msg.componentName,
+          onProgress: (message, percent) => {
+            const prog: CodeMessage = { type: 'reconstruct-progress', message, percent };
+            figma.ui.postMessage(prog);
+          },
+        });
+        const done: CodeMessage = { type: 'reconstruct-complete', nodeId: result.nodeId, warnings: result.warnings };
+        figma.ui.postMessage(done);
+      } catch (err) {
+        sendError(`Reconstruction failed: ${err}`);
+      }
       break;
+    }
+    case 'reconstruct-modify': {
+      try {
+        const result = await reconstructFromSnapshot(msg.snapshot, {
+          mode: 'modify',
+          targetNodeId: msg.nodeId,
+          onProgress: (message, percent) => {
+            const prog: CodeMessage = { type: 'reconstruct-progress', message, percent };
+            figma.ui.postMessage(prog);
+          },
+        });
+        const done: CodeMessage = { type: 'reconstruct-complete', nodeId: result.nodeId, warnings: result.warnings };
+        figma.ui.postMessage(done);
+      } catch (err) {
+        sendError(`Reconstruction failed: ${err}`);
+      }
+      break;
+    }
   }
 };
 

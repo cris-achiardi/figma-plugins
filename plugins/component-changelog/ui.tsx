@@ -395,6 +395,129 @@ function ProgressBar({ percent, message }: { percent: number; message: string })
   );
 }
 
+function RestoreModal({ versionLabel, componentName, nodeId, snapshot, onClose }: {
+  versionLabel: string;
+  componentName: string;
+  nodeId: string;
+  snapshot: any;
+  onClose: () => void;
+}) {
+  const [restoring, setRestoring] = React.useState(false);
+  const [progress, setProgress] = React.useState({ percent: 0, message: '' });
+  const [warnings, setWarnings] = React.useState<string[] | null>(null);
+
+  React.useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const msg = e.data.pluginMessage as CodeMessage;
+      if (!msg) return;
+      if (msg.type === 'reconstruct-progress') {
+        setProgress({ percent: msg.percent, message: msg.message });
+      }
+      if (msg.type === 'reconstruct-complete') {
+        setRestoring(false);
+        setWarnings(msg.warnings);
+        if (msg.warnings.length === 0) {
+          onClose();
+        }
+      }
+      if (msg.type === 'error') {
+        setRestoring(false);
+        setWarnings([msg.message]);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [onClose]);
+
+  const handleCopy = () => {
+    setRestoring(true);
+    setWarnings(null);
+    postToCode({ type: 'reconstruct-copy', snapshot, componentName });
+  };
+
+  const handleModify = () => {
+    setRestoring(true);
+    setWarnings(null);
+    postToCode({ type: 'reconstruct-modify', snapshot, nodeId });
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 999,
+    }}>
+      <div style={{
+        ...s.card, width: 360, display: 'flex', flexDirection: 'column', gap: 16,
+        padding: 24, background: 'var(--bg-page)',
+      }}>
+        <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-primary)' }}>
+          restore {versionLabel}
+        </span>
+
+        {restoring ? (
+          <div style={{ padding: '20px 0' }}>
+            <ProgressBar percent={progress.percent} message={progress.message} />
+          </div>
+        ) : warnings ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <span style={{ ...s.label, fontSize: 11, color: 'var(--diff-changed)' }}>
+              // warnings ({warnings.length})
+            </span>
+            <div style={{
+              maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border)',
+              padding: 8, display: 'flex', flexDirection: 'column', gap: 4,
+            }}>
+              {warnings.map((w, i) => (
+                <span key={i} style={{ ...s.body, fontSize: 10, color: 'var(--diff-changed)', lineHeight: 1.4 }}>
+                  {w}
+                </span>
+              ))}
+            </div>
+            <button style={{ ...s.btnPrimary, width: '100%' }} onClick={onClose}>done</button>
+          </div>
+        ) : (
+          <>
+            <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              choose how to restore this snapshot:
+            </span>
+
+            <div
+              onClick={handleCopy}
+              style={{
+                ...s.card, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+                border: '1px solid var(--accent-dim)',
+              }}
+            >
+              <span style={{ ...s.heading, fontSize: 12, color: 'var(--accent)' }}>$ create_copy</span>
+              <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+                creates a new frame on the canvas from the snapshot. safe, non-destructive.
+              </span>
+            </div>
+
+            <div
+              onClick={handleModify}
+              style={{
+                ...s.card, cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+                border: '1px solid var(--diff-changed)',
+              }}
+            >
+              <span style={{ ...s.heading, fontSize: 12, color: 'var(--diff-changed)' }}>$ modify_existing</span>
+              <span style={{ ...s.body, fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>
+                clears the existing component and rebuilds from snapshot. destructive — overwrites current state.
+              </span>
+            </div>
+
+            <button style={{ ...s.btnGhost, width: '100%', color: 'var(--text-tertiary)' }} onClick={onClose}>
+              cancel
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Screen: Auth ─────────────────────────────────────
 
 function AuthScreen({ onAuthenticated }: {
@@ -1117,6 +1240,7 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [loadingDiff, setLoadingDiff] = React.useState(true);
   const [reextracting, setReextracting] = React.useState(false);
+  const [showRestore, setShowRestore] = React.useState(false);
 
   React.useEffect(() => {
     setLoadingDiff(true);
@@ -1558,6 +1682,7 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
         {status === 'published' && (
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <button style={s.btnSecondary} onClick={onViewHistory}>view history</button>
+            <button style={s.btnPrimary} onClick={() => setShowRestore(true)}>$ restore</button>
             <button style={s.btnSecondary} onClick={() => {
               const blob = new Blob([JSON.stringify(version.snapshot, null, 2)], { type: 'application/json' });
               const url = URL.createObjectURL(blob);
@@ -1567,6 +1692,16 @@ function VersionDetailScreen({ comp, userName, photoUrl, projectId, versionId, o
               URL.revokeObjectURL(url);
             }}>export json</button>
           </div>
+        )}
+
+        {showRestore && version && (
+          <RestoreModal
+            versionLabel={`v${version.version}`}
+            componentName={version.component_name}
+            nodeId={comp.nodeId}
+            snapshot={version.snapshot}
+            onClose={() => setShowRestore(false)}
+          />
         )}
       </div>
     </div>
@@ -1583,6 +1718,7 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
 }) {
   const [versions, setVersions] = React.useState<ComponentVersion[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [restoreVersion, setRestoreVersion] = React.useState<ComponentVersion | null>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -1639,6 +1775,7 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button style={s.btnGhost} onClick={() => onViewDetail(v)}>view details</button>
+              <button style={{ ...s.btnGhost, color: 'var(--text-primary)' }} onClick={() => setRestoreVersion(v)}>restore</button>
               <button style={s.btnGhost} onClick={() => {
                 const blob = new Blob([JSON.stringify(v.snapshot, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -1673,6 +1810,16 @@ function VersionHistoryScreen({ comp, projectId, onBack, onViewDetail }: {
           </div>
         )}
       </div>
+
+      {restoreVersion && (
+        <RestoreModal
+          versionLabel={`v${restoreVersion.version}`}
+          componentName={restoreVersion.component_name}
+          nodeId={comp.nodeId}
+          snapshot={restoreVersion.snapshot}
+          onClose={() => setRestoreVersion(null)}
+        />
+      )}
     </div>
   );
 }
