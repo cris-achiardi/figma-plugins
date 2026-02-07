@@ -15,6 +15,7 @@ packages/*/*.tsbuildinfo
 # Build outputs - Astro apps
 apps/*/dist/
 apps/*/.astro/
+apps/*/.vercel/
 
 # OS files
 .DS_Store
