@@ -981,40 +981,31 @@ function LibraryComponentsScreen({
                 </div>
 
                 {/* Content */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1, display: 'flex', gap: 8 }}>
+                  {/* Left column: name, date, history */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', gap: 3 }}>
                     <span style={{ ...s.heading, fontSize: 13, color: 'var(--text-primary)' }}>{comp.name}</span>
-                    {hasDraft ? (
-                      <Badge status={draft!.status} />
-                    ) : latest ? (
-                      <Badge status="published" />
-                    ) : (
-                      <span style={{
-                        ...s.label, fontSize: 10, color: 'var(--text-tertiary)',
-                        border: '1px solid var(--text-tertiary)', padding: '3px 8px',
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                      }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-tertiary)' }} />
-                        no versions
+                    {latest?.published_at && !hasDraft && (
+                      <span style={{ ...s.label, fontSize: 11, color: 'var(--text-tertiary)' }}>
+                        published {formatDate(latest.published_at)}
                       </span>
                     )}
+                    {latest && (
+                      <button
+                        style={{ ...s.btnGhost, padding: 0, fontSize: 10, justifyContent: 'flex-start' }}
+                        onClick={() => onViewHistory(comp)}
+                      >history</button>
+                    )}
                   </div>
-
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {/* Right column: version + action */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
                     {hasDraft ? (
-                      <span style={{ ...s.label, fontSize: 11, color: statusColor[draft!.status] }}>
-                        v{draft!.version}-{draft!.status.replace('_', '')}
-                      </span>
+                      <span style={{ ...s.label, fontSize: 11, color: statusColor[draft!.status] }}>draft</span>
                     ) : latest ? (
                       <span style={{ ...s.label, fontSize: 11, color: 'var(--accent)' }}>v{latest.version}</span>
-                    ) : null}
-                    {(hasDraft || latest) && <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>·</span>}
-                    <span style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>
-                      {comp.publishStatus.toLowerCase().replace('_', ' ')}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    ) : (
+                      <span style={{ ...s.label, fontSize: 11, color: 'var(--text-tertiary)' }}>no version</span>
+                    )}
                     {hasDraft ? (
                       <button style={s.btnPrimary} onClick={() => onViewDetail(comp)}>view draft</button>
                     ) : (
@@ -1025,9 +1016,6 @@ function LibraryComponentsScreen({
                       >
                         {creatingDraft === comp.key ? 'creating...' : 'create draft'}
                       </button>
-                    )}
-                    {latest && (
-                      <button style={s.btnGhost} onClick={() => onViewHistory(comp)}>history</button>
                     )}
                   </div>
                 </div>
