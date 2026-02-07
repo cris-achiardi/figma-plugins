@@ -45,7 +45,7 @@ export async function createDraft(params: {
 }): Promise<ComponentVersion> {
   // Determine next version based on latest published
   const latest = await getLatestPublished(params.componentKey, params.projectId);
-  const nextVersion = latest ? latest.version : '0.1.0';
+  const nextVersion = latest ? computeVersion(latest.version, 'patch') : '0.1.0';
 
   const { data, error } = await supabase
     .from('component_versions')
