@@ -9,7 +9,7 @@ import type {
 } from './types';
 import {
   supabase,
-  getOrCreateProject, createDraft, submitForReview,
+  getOrCreateProject, createDraft, deleteDraft, submitForReview,
   approveVersion, rejectVersion, publishVersion,
   getVersionHistory, getLatestPublished, getActiveDraft,
   getVersionById, uploadThumbnail, getAuditLog,
@@ -1060,6 +1060,7 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
   const [diffLines, setDiffLines] = React.useState<DiffLine[]>([]);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [loadingDiff, setLoadingDiff] = React.useState(true);
+  const [reextracting, setReextracting] = React.useState(false);
 
   React.useEffect(() => {
     setLoadingDiff(true);
@@ -1110,6 +1111,93 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
     if (v) {
       const log = await getAuditLog(v.id);
       setAuditLog(log as AuditEntry[]);
+    }
+  };
+
+  const handleDiscard = async () => {
+    if (!version) return;
+    setLoading(true);
+    try {
+      await deleteDraft(version.id);
+      onBack();
+    } catch (err: any) {
+      setErrorMsg(`Failed to discard: ${err.message || err}`);
+      setLoading(false);
+    }
+  };
+
+  const handleReextract = async () => {
+    if (!version) return;
+    setReextracting(true);
+    setErrorMsg(null);
+    try {
+      // Fresh-extract from Figma
+      const fresh = await new Promise<ExtractedComponent>((resolve, reject) => {
+        const handler = (e: MessageEvent) => {
+          const msg = e.data.pluginMessage as CodeMessage;
+          if (!msg) return;
+          if (msg.type === 'extraction-complete' && msg.components.length > 0) {
+            window.removeEventListener('message', handler);
+            resolve(msg.components[0]);
+          }
+          if (msg.type === 'error') {
+            window.removeEventListener('message', handler);
+            reject(new Error(msg.message));
+          }
+        };
+        window.addEventListener('message', handler);
+        postToCode({ type: 'extract-single', nodeId: comp.nodeId });
+      });
+
+      // Diff against latest published
+      const pub = await getLatestPublished(comp.key, projectId);
+      const diffResult = pub ? deepDiff(pub.snapshot, fresh.snapshot) : null;
+
+      // Upload new thumbnail
+      const bytes = new Uint8Array(fresh.thumbnailBytes);
+      const thumbPath = `${projectId}/${fresh.key}/${Date.now()}.png`;
+      let thumbUrl: string | undefined;
+      try { thumbUrl = await uploadThumbnail(bytes, thumbPath); } catch { /* ok */ }
+
+      // Update the draft in Supabase
+      await createDraft({
+        projectId,
+        componentKey: fresh.key,
+        componentName: fresh.name,
+        snapshot: fresh.snapshot,
+        propertyDefinitions: fresh.propertyDefinitions,
+        variablesUsed: fresh.variablesUsed,
+        diff: diffResult,
+        createdBy: userName,
+      });
+
+      // Reload the version detail
+      await reload();
+
+      // Re-compute diff display
+      setLatest(pub);
+      if (pub?.snapshot && fresh.snapshot) {
+        const lines = buildDiffLines(pub.snapshot, fresh.snapshot);
+        if (lines.length > 0) {
+          setDiffLines(lines);
+        } else {
+          const rawDiffs = deepDiff(pub.snapshot, fresh.snapshot);
+          if (rawDiffs && rawDiffs.length > 0) {
+            setDiffLines(rawDiffs.slice(0, 60).map((d: any) => ({
+              type: d.kind === 'N' ? 'added' as const : d.kind === 'D' ? 'removed' as const : 'changed' as const,
+              text: (d.path || []).join('.') + (d.kind === 'E' ? `: ${JSON.stringify(d.lhs)} → ${JSON.stringify(d.rhs)}` : ''),
+            })));
+          } else {
+            setDiffLines([]);
+          }
+        }
+      } else {
+        setDiffLines([]);
+      }
+    } catch (err: any) {
+      setErrorMsg(`Re-extract failed: ${err.message || err}`);
+    } finally {
+      setReextracting(false);
     }
   };
 
@@ -1188,6 +1276,15 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
       {/* Body */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Stepper status={status} />
+
+        {errorMsg && (
+          <div style={{
+            padding: '8px 12px', background: '#EF444415', border: '1px solid var(--diff-removed)',
+            ...s.body, fontSize: 11, color: 'var(--diff-removed)',
+          }}>
+            {errorMsg}
+          </div>
+        )}
 
         <div style={{ ...s.body, fontSize: 11, color: 'var(--text-secondary)' }}>
           {status === 'draft' && `created by: ${version.created_by} · ${formatDate(version.created_at)}`}
@@ -1354,10 +1451,26 @@ function VersionDetailScreen({ comp, userName, projectId, versionId, onBack, onV
         )}
 
         {status === 'draft' && (
-          <div style={{ padding: '8px 0' }}>
-            <button style={{ ...s.btnPrimary, width: '100%' }} onClick={handleSubmitForReview} disabled={loading}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+            <button style={{ ...s.btnPrimary, width: '100%' }} onClick={handleSubmitForReview} disabled={loading || reextracting}>
               $ submit_for_review
             </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                style={{ ...s.btnSecondary, flex: 1, opacity: reextracting ? 0.5 : 1 }}
+                onClick={handleReextract}
+                disabled={loading || reextracting}
+              >
+                {reextracting ? 'extracting...' : '$ re-extract'}
+              </button>
+              <button
+                style={{ ...s.btnDanger, flex: 1 }}
+                onClick={handleDiscard}
+                disabled={loading || reextracting}
+              >
+                discard draft
+              </button>
+            </div>
           </div>
         )}
 

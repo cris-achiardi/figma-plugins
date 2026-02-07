@@ -267,6 +267,23 @@ export async function getVersionById(versionId: string): Promise<ComponentVersio
   return (data as ComponentVersion) || null;
 }
 
+// --- Delete Draft ---
+
+export async function deleteDraft(versionId: string): Promise<void> {
+  // Delete audit log entries first (foreign key)
+  await supabase
+    .from('audit_log')
+    .delete()
+    .eq('component_version_id', versionId);
+
+  const { error } = await supabase
+    .from('component_versions')
+    .delete()
+    .eq('id', versionId);
+
+  if (error) throw new Error(`Failed to delete draft: ${error.message}`);
+}
+
 // --- Thumbnails ---
 
 export async function uploadThumbnail(
