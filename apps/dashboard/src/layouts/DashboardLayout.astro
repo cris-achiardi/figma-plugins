@@ -7,7 +7,7 @@ interface Props {
   title?: string;
 }
 
-const { title = 'Dashboard — Component Changelog' } = Astro.props;
+const { title = 'DS-Git for Figma' } = Astro.props;
 
 const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
 const projects = await getProjects();
@@ -106,6 +106,10 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     box-sizing: border-box;
   }
 
+  html, body {
+    height: 100%;
+  }
+
   html {
     font-family: var(--font-sans);
     font-size: 14px;
@@ -113,6 +117,12 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     background: var(--bg-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
   a {
@@ -282,9 +292,11 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
   }
 
   .dashboard-container {
+    flex: 1;
     max-width: 1200px;
     margin: 0 auto;
     padding: 32px;
+    width: 100%;
   }
 
   .footer {
