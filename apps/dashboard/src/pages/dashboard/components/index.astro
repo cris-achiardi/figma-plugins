@@ -1,0 +1,84 @@
+---
+export const prerender = false;
+
+import DashboardLayout from '../../../layouts/DashboardLayout.astro';
+import ComponentTable from '../../../components/dashboard/ComponentTable.tsx';
+import { getProjects, getComponentSummaries } from '../../../lib/metrics';
+
+const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
+const projects = await getProjects();
+const projectId = Astro.url.searchParams.get('project') || projects.find(p => p.id === WEAVE_ID)?.id || projects[0]?.id || '';
+
+let components: Awaited<ReturnType<typeof getComponentSummaries>> = [];
+
+if (projectId) {
+  components = await getComponentSummaries(projectId);
+}
+---
+
+<DashboardLayout title="Components — Component Changelog">
+  <h1>Components</h1>
+
+  {!projectId ? (
+    <p class="empty">No projects found. Use the Figma plugin to create one.</p>
+  ) : (
+    <>
+      <div id="search-slot" class="search-slot"></div>
+      <div class="table-scroll">
+        <ComponentTable
+          client:load
+          components={components}
+          projectId={projectId}
+        />
+      </div>
+    </>
+  )}
+</DashboardLayout>
+
+<style>
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+  }
+
+  .search-slot {
+    margin-bottom: 16px;
+  }
+
+  .table-scroll {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    min-height: 410px;
+    max-height: 410px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .table-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .table-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  .empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 64px 16px;
+  }
+</style>

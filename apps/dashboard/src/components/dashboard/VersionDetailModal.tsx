@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { Plus, ChevronRight, Check, Star, X, Circle } from 'lucide-react';
 import { buildDiffLines } from './diff-utils';
 import type { DiffLine } from './diff-utils';
 import { getVersionSnapshots } from '../../lib/data';
@@ -57,12 +59,12 @@ const statusLabels: Record<string, string> = {
   deprecated: 'deprecated',
 };
 
-const actionConfig: Record<string, { icon: string; label: string; color: string }> = {
-  created: { icon: '+', label: 'Draft created', color: '#fbbf24' },
-  submitted_for_review: { icon: '›', label: 'Submitted for review', color: '#60a5fa' },
-  approved: { icon: '✓', label: 'Approved', color: '#4ade80' },
-  published: { icon: '★', label: 'Published', color: '#4ade80' },
-  rejected: { icon: '✗', label: 'Rejected', color: '#f87171' },
+const actionConfig: Record<string, { icon: ReactNode; label: string; color: string }> = {
+  created: { icon: <Plus size={11} />, label: 'Draft created', color: '#fbbf24' },
+  submitted_for_review: { icon: <ChevronRight size={11} />, label: 'Submitted for review', color: '#60a5fa' },
+  approved: { icon: <Check size={11} />, label: 'Approved', color: '#4ade80' },
+  published: { icon: <Star size={11} />, label: 'Published', color: '#4ade80' },
+  rejected: { icon: <X size={11} />, label: 'Rejected', color: '#f87171' },
 };
 
 // ----- Helpers -----
@@ -202,7 +204,7 @@ export default function VersionDetailModal({ version, auditLog, allVersions, onC
             onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
             aria-label="Close"
           >
-            ✕
+            <X size={14} />
           </button>
         </div>
 
@@ -389,7 +391,7 @@ function ActivityTab({ auditLog }: { auditLog: AuditEntry[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {auditLog.map((entry, i) => {
-        const config = actionConfig[entry.action] || { icon: '•', label: entry.action, color: 'var(--text-muted)' };
+        const config = actionConfig[entry.action] || { icon: <Circle size={11} />, label: entry.action, color: 'var(--text-muted)' };
         return (
           <div key={entry.id} style={{
             display: 'flex',

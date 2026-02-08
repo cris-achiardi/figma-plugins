@@ -3,15 +3,13 @@ export const prerender = false;
 
 import DashboardLayout from '../../layouts/DashboardLayout.astro';
 import MetricCard from '../../components/dashboard/MetricCard.astro';
-import ComponentTable from '../../components/dashboard/ComponentTable.tsx';
+import LibraryReleases from '../../components/dashboard/LibraryReleases.tsx';
 import {
   getProjects,
-  getComponentSummaries,
-  calculateCoverage,
-  calculateDrift,
   getPublishedCount,
 } from '../../lib/metrics';
-import { getLatestLibraryVersion } from '../../lib/data';
+import { getLatestLibraryVersion, getLibraryVersionHistory } from '../../lib/data';
+import type { LibraryVersion } from '../../lib/data';
 
 const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
 const projects = await getProjects();
@@ -19,28 +17,24 @@ const projectId = Astro.url.searchParams.get('project') || projects.find(p => p.
 const currentProject = projects.find(p => p.id === projectId);
 const figmaUrl = projectId === WEAVE_ID && currentProject?.figma_file_key ? `https://www.figma.com/file/${currentProject.figma_file_key}` : null;
 
-let coverage = 0;
-let drift = 0;
 let publishedCount = 0;
 let latestRelease = '';
-let components: Awaited<ReturnType<typeof getComponentSummaries>> = [];
+let releases: LibraryVersion[] = [];
 
 if (projectId) {
-  [coverage, drift, publishedCount, components] = await Promise.all([
-    calculateCoverage(projectId),
-    calculateDrift(projectId),
+  [publishedCount, releases] = await Promise.all([
     getPublishedCount(projectId),
-    getComponentSummaries(projectId),
+    getLibraryVersionHistory(projectId),
   ]);
 
-  const latestLib = await getLatestLibraryVersion(projectId);
+  const latestLib = releases[0] || null;
   latestRelease = latestLib ? `v${latestLib.version}` : '--';
 }
 ---
 
 <DashboardLayout title="Dashboard — Component Changelog">
   <div class="heading">
-    <h1>Health Overview</h1>
+    <h1>Library</h1>
     {figmaUrl && (
       <a href={figmaUrl} target="_blank" rel="noopener noreferrer" class="figma-link">
         <svg width="14" height="14" viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -60,21 +54,12 @@ if (projectId) {
   ) : (
     <>
       <div class="metrics">
-        <MetricCard label="Coverage" value={`${coverage}%`} />
-        <MetricCard label="Drafts" value={drift} />
         <MetricCard label="Components" value={publishedCount} />
         <MetricCard label="Latest Release" value={latestRelease} />
       </div>
 
-      <h2 class="section-heading">Components</h2>
-      <div id="search-slot" class="search-slot"></div>
-      <div class="table-scroll">
-        <ComponentTable
-          client:load
-          components={components}
-          projectId={projectId}
-        />
-      </div>
+      <h2 class="section-heading">Releases</h2>
+      <LibraryReleases client:load releases={releases} projectId={projectId} />
     </>
   )}
 </DashboardLayout>
@@ -112,7 +97,7 @@ if (projectId) {
 
   .metrics {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
     margin-bottom: 32px;
   }
@@ -127,39 +112,6 @@ if (projectId) {
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 12px;
-  }
-
-  .search-slot {
-    margin-bottom: 16px;
-  }
-
-  .table-scroll {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    min-height: 410px;
-    max-height: 410px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
-  .table-scroll::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .table-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .table-scroll::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
-  }
-
-  .table-scroll::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
   }
 
   .empty {

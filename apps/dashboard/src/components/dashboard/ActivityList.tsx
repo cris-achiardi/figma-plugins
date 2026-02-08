@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Plus, ChevronRight, Check, Star, X, Circle } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface ActivityEntry {
   id: string;
@@ -17,12 +19,12 @@ interface Props {
 
 const PAGE_SIZE = 10;
 
-const actionConfig: Record<string, { icon: string; label: string; color: string }> = {
-  created: { icon: '+', label: 'draft created', color: '#fbbf24' },
-  submitted_for_review: { icon: '›', label: 'submitted for review', color: '#60a5fa' },
-  approved: { icon: '✓', label: 'approved', color: '#4ade80' },
-  published: { icon: '★', label: 'published', color: '#4ade80' },
-  rejected: { icon: '✗', label: 'rejected', color: '#f87171' },
+const actionConfig: Record<string, { icon: ReactNode; label: string; color: string }> = {
+  created: { icon: <Plus size={11} />, label: 'draft created', color: '#fbbf24' },
+  submitted_for_review: { icon: <ChevronRight size={11} />, label: 'submitted for review', color: '#60a5fa' },
+  approved: { icon: <Check size={11} />, label: 'approved', color: '#4ade80' },
+  published: { icon: <Star size={11} />, label: 'published', color: '#4ade80' },
+  rejected: { icon: <X size={11} />, label: 'rejected', color: '#f87171' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -59,7 +61,7 @@ export default function ActivityList({ entries }: Props) {
         borderRadius: 'var(--radius-md)',
       }}>
         {shown.map((entry) => {
-          const config = actionConfig[entry.action] || { icon: '•', label: entry.action, color: 'var(--text-muted)' };
+          const config = actionConfig[entry.action] || { icon: <Circle size={11} />, label: entry.action, color: 'var(--text-muted)' };
           return (
             <div
               key={entry.id}

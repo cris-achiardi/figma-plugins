@@ -28,7 +28,7 @@ const thumbnailUrl = latest?.thumbnail_url || history[0]?.thumbnail_url;
 ---
 
 <DashboardLayout title={`${componentName} — Component Changelog`}>
-  <a href={`/dashboard?project=${projectId}`} class="back-link">&larr; Back to overview</a>
+  <a href={`/dashboard/components?project=${projectId}`} class="back-link">&larr; Back to components</a>
 
   <div class="component-header">
     <h1>{componentName}</h1>
@@ -91,16 +91,9 @@ const thumbnailUrl = latest?.thumbnail_url || history[0]?.thumbnail_url;
     border-radius: var(--radius-sm);
   }
 
-  .history-section {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-  }
-
   .history-section h2 {
     font-size: 14px;
     font-weight: 600;
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
   }
 </style>
