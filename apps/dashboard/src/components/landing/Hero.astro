@@ -1,60 +1,109 @@
 ---
-// Hero section — teammate will polish
+import Prism from './Prism.tsx';
 ---
 
 <section class="hero">
-  <h1>Component Changelog</h1>
-  <p class="tagline">Version control for your design system components. Track changes, manage approvals, and ship with confidence.</p>
-  <a href="/dashboard" class="cta-button">Open Dashboard &rarr;</a>
+  <div class="hero-prism">
+    <Prism
+      client:load
+      animationType="hover"
+      timeScale={0.5}
+      height={3.2}
+      baseWidth={4}
+      scale={2}
+      hueShift={0}
+      colorFrequency={4}
+      noise={0.25}
+      glow={0.7}
+    />
+  </div>
+  <div class="hero-content">
+    <span class="hero-tag">Figma Libraries version control</span>
+    <h1>Track every change.<br />Ship with confidence.</h1>
+    <p class="tagline">Version tracking, visual diffs, and approval pipelines for your Figma design system. Never let a breaking change slip through again.</p>
+    <a href="/dashboard" class="cta-button">See Demo Dashboard</a>
+  </div>
 </section>
 
 <style>
   .hero {
+    position: relative;
     text-align: center;
     padding: 6rem 2rem 4rem;
+    max-width: 1400px;
+    margin: -48px auto 0;
+    padding-top: calc(48px + 6rem);
+    min-height: 800px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hero-prism {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
     max-width: 720px;
-    margin: 0 auto;
+  }
+
+  .hero-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(1px);
+    padding: 8px 14px;
+    border-radius: 9999px;
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.02em;
   }
 
   h1 {
-    font-family: var(--font-heading);
+    font-family: var(--font-sans);
     font-size: 3rem;
     font-weight: 700;
     line-height: 1.1;
     margin-bottom: 1.5rem;
-    background: linear-gradient(135deg, var(--text-primary), var(--accent));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
   }
 
   .tagline {
     font-size: 1.125rem;
-    color: var(--text-secondary);
+    font-weight: 300;
+    color: var(--text-primary);
     line-height: 1.6;
     margin-bottom: 2.5rem;
+    text-wrap: balance;
   }
 
   .cta-button {
     display: inline-block;
-    background: var(--accent);
+    background: var(--text-primary);
     color: var(--bg-primary);
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 1rem;
-    padding: 0.875rem 2rem;
-    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 10px 24px;
+    border-radius: var(--radius-md);
     text-decoration: none;
-    transition: background 0.2s;
+    transition: opacity 0.15s;
   }
 
   .cta-button:hover {
-    background: var(--accent-dim);
+    opacity: 0.85;
+    color: var(--bg-primary);
     text-decoration: none;
   }
 
   @media (max-width: 600px) {
     h1 { font-size: 2rem; }
-    .hero { padding: 4rem 1.5rem 3rem; }
+    .hero { padding: 4rem 1.5rem 3rem; min-height: 400px; }
   }
 </style>

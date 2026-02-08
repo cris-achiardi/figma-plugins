@@ -67,6 +67,14 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     <div class="dashboard-container">
       <slot />
     </div>
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="footer-logo" />
+        </div>
+        <span class="footer-text">Built for Into Design Systems Hackathon</span>
+      </div>
+    </footer>
   </body>
 </html>
 
@@ -277,5 +285,29 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     max-width: 1200px;
     margin: 0 auto;
     padding: 32px;
+  }
+
+  .footer {
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 32px;
+    height: 200px;
+  }
+
+  .footer-logo {
+    height: 32px;
+    width: auto;
+    opacity: 0.7;
+  }
+
+  .footer-text {
+    font-size: 13px;
+    color: var(--text-muted);
   }
 </style>

@@ -1,5 +1,4 @@
 ---
-// Features section — teammate will polish
 const features = [
   {
     title: 'Version Tracking',
@@ -21,8 +20,10 @@ const features = [
 ---
 
 <section class="features">
-  <h2>Why Component Changelog?</h2>
-  <p class="subtitle">Design systems break silently. Changes go untracked, undocumented, and unreviewed.</p>
+  <div class="features-header">
+    <h2>Everything you need to<br />version your design system.</h2>
+    <p class="subtitle">Explore the live dashboard and see how Component Changelog tracks your design system health in real-time.</p>
+  </div>
   <div class="feature-grid">
     {features.map((f) => (
       <div class="feature-card">
@@ -35,48 +36,75 @@ const features = [
 
 <style>
   .features {
-    padding: 4rem 2rem;
+    padding: 6rem 2rem;
     max-width: 960px;
     margin: 0 auto;
   }
 
+  .features-header {
+    max-width: 560px;
+    margin-bottom: 3rem;
+  }
+
   h2 {
-    font-family: var(--font-heading);
-    font-size: 1.75rem;
-    text-align: center;
-    margin-bottom: 0.75rem;
+    font-family: var(--font-sans);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
   }
 
   .subtitle {
-    text-align: center;
     color: var(--text-secondary);
-    margin-bottom: 3rem;
     font-size: 1rem;
+    line-height: 1.6;
   }
 
   .feature-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
   }
 
   .feature-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
+    transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+  }
+
+  .feature-card:hover {
+    border-color: rgba(200, 180, 255, 0.15);
+    background: var(--bg-hover);
+    box-shadow:
+      0 0 30px rgba(251, 113, 133, 0.04),
+      0 0 60px rgba(129, 140, 248, 0.04),
+      0 0 80px rgba(52, 211, 153, 0.03);
   }
 
   .feature-card h3 {
-    font-family: var(--font-heading);
-    font-size: 1rem;
-    color: var(--accent);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 0.5rem;
   }
 
   .feature-card p {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+    font-size: 14px;
+    color: var(--text-muted);
     line-height: 1.5;
+  }
+
+  @media (max-width: 600px) {
+    .feature-grid {
+      grid-template-columns: 1fr;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+    }
   }
 </style>

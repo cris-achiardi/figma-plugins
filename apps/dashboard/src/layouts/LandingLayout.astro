@@ -12,40 +12,64 @@ const { title = 'Component Changelog' } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
+    <link rel="icon" type="image/png" href="/assets/img/ds-git favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-mono/style.css"
       rel="stylesheet"
     />
   </head>
   <body>
     <nav class="nav">
-      <a href="/" class="nav-brand">Component Changelog</a>
+      <div class="nav-left">
+        <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="nav-logo" />
+        <a href="/" class="nav-brand">DS-Git</a>
+      </div>
       <a href="/dashboard" class="nav-link">Dashboard</a>
     </nav>
     <main>
       <slot />
     </main>
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="footer-logo" />
+        </div>
+        <span class="footer-text">Built for Into Design Systems Hackathon</span>
+      </div>
+    </footer>
   </body>
 </html>
 
 <style is:global>
   :root {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-tertiary: #0f3460;
-    --bg-surface: #1e2a45;
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --text-muted: #6b7280;
-    --accent: #00d4aa;
-    --accent-dim: #00a88a;
-    --diff-added: #2ea043;
-    --diff-removed: #f85149;
-    --border: #2a3a5c;
-    --font-heading: 'JetBrains Mono', monospace;
-    --font-body: 'IBM Plex Mono', monospace;
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #141414;
+    --bg-surface: #141414;
+    --bg-hover: #1c1c1c;
+    --text-primary: #f5f5f4;
+    --text-secondary: #a8a29e;
+    --text-muted: #78716c;
+    --accent: #f5f5f4;
+    --border: #292524;
+    --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'Geist Mono', 'Menlo', monospace;
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --color-error: #f87171;
+    --color-info: #60a5fa;
   }
 
   * {
@@ -55,49 +79,92 @@ const { title = 'Component Changelog' } = Astro.props;
   }
 
   html {
-    font-family: var(--font-body);
+    font-family: var(--font-sans);
+    font-size: 14px;
     color: var(--text-primary);
     background: var(--bg-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   a {
-    color: var(--accent);
+    color: var(--text-secondary);
     text-decoration: none;
   }
 
   a:hover {
-    text-decoration: underline;
+    color: var(--text-primary);
+    text-decoration: none;
   }
 </style>
 
 <style>
   .nav {
+    position: relative;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 2rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-secondary);
+    padding: 0 24px;
+    height: 48px;
+    background: transparent;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nav-logo {
+    height: 24px;
+    width: auto;
   }
 
   .nav-brand {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 1.1rem;
+    font-weight: 600;
+    font-size: 14px;
     color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
 
   .nav-brand:hover {
-    text-decoration: none;
-    color: var(--accent);
+    color: var(--text-primary);
   }
 
   .nav-link {
-    font-size: 0.875rem;
+    font-size: 14px;
     color: var(--text-secondary);
+    transition: color 0.15s;
   }
 
   .nav-link:hover {
-    color: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .footer {
+  }
+
+  .footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 200px;
+  }
+
+  .footer-logo {
+    height: 32px;
+    width: auto;
+    opacity: 0.7;
+  }
+
+  .footer-text {
+    font-size: 13px;
+    color: var(--text-muted);
   }
 </style>
