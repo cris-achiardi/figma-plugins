@@ -7,7 +7,7 @@ interface Props {
   title?: string;
 }
 
-const { title = 'DS-Git for Figma' } = Astro.props;
+const { title = 'Version control for Figma libraries' } = Astro.props;
 
 const WEAVE_ID = '6137fe77-c965-4119-8578-e1d796033b5e';
 const projects = await getProjects();
@@ -48,7 +48,7 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
   <body>
     <nav class="nav">
       <div class="nav-left">
-        <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="nav-logo" />
+        <img src="/assets/img/ds-git logo.png" alt="Enabler" class="nav-logo" />
         <a href="/" class="nav-brand">Demo</a>
         <span class="nav-separator">/</span>
         <ProjectSelector
@@ -70,7 +70,7 @@ for (const v of versionEntries) versionMap[v.id] = v.version;
     <footer class="footer">
       <div class="footer-inner">
         <div class="footer-left">
-          <img src="/assets/img/ds-git logo.png" alt="DS-Git" class="footer-logo" />
+          <img src="/assets/img/ds-git logo.png" alt="Enabler" class="footer-logo" />
         </div>
         <span class="footer-text">Built for Into Design Systems Hackathon</span>
       </div>
