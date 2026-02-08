@@ -155,7 +155,7 @@ export default function LibraryReleaseDetailModal({ release, projectId, onClose 
         </div>
 
         {/* Tab content */}
-        <div className="thin-scrollbar" style={{ overflowY: 'auto', padding: 20, flex: 1 }}>
+        <div className="thin-scrollbar" style={{ overflowY: 'auto', padding: 20, flex: 1, display: 'flex', flexDirection: 'column' as const }}>
           {activeTab === 'overview' && <OverviewTab release={release} />}
           {activeTab === 'components' && <ComponentsTab release={release} projectId={projectId} />}
         </div>
@@ -168,10 +168,11 @@ export default function LibraryReleaseDetailModal({ release, projectId, onClose 
 
 function OverviewTab({ release }: { release: LibraryVersion }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
       {/* Release notes */}
       {release.changelog_message && (
         <div style={{
+          flex: 1,
           background: 'var(--bg-primary)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-md)',
@@ -180,7 +181,7 @@ function OverviewTab({ release }: { release: LibraryVersion }) {
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Release Notes
           </div>
-          <div style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.5 }}>
+          <div style={{ color: 'var(--text-primary)', fontSize: 14, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
             {release.changelog_message}
           </div>
         </div>

@@ -59,12 +59,20 @@ const statusLabels: Record<string, string> = {
   deprecated: 'deprecated',
 };
 
-const actionConfig: Record<string, { icon: ReactNode; label: string; color: string }> = {
-  created: { icon: <Plus size={11} />, label: 'Draft created', color: '#fbbf24' },
-  submitted_for_review: { icon: <ChevronRight size={11} />, label: 'Submitted for review', color: '#60a5fa' },
-  approved: { icon: <Check size={11} />, label: 'Approved', color: '#4ade80' },
-  published: { icon: <Star size={11} />, label: 'Published', color: '#4ade80' },
-  rejected: { icon: <X size={11} />, label: 'Rejected', color: '#f87171' },
+const actionIcons: Record<string, (props: { size: number }) => ReactNode> = {
+  created: (p) => <Plus {...p} />,
+  submitted_for_review: (p) => <ChevronRight {...p} />,
+  approved: (p) => <Check {...p} />,
+  published: (p) => <Star {...p} />,
+  rejected: (p) => <X {...p} />,
+};
+
+const actionConfig: Record<string, { label: string; color: string }> = {
+  created: { label: 'Draft created', color: '#fbbf24' },
+  submitted_for_review: { label: 'Submitted for review', color: '#60a5fa' },
+  approved: { label: 'Approved', color: '#4ade80' },
+  published: { label: 'Published', color: '#4ade80' },
+  rejected: { label: 'Rejected', color: '#f87171' },
 };
 
 // ----- Helpers -----
@@ -391,7 +399,8 @@ function ActivityTab({ auditLog }: { auditLog: AuditEntry[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {auditLog.map((entry, i) => {
-        const config = actionConfig[entry.action] || { icon: <Circle size={11} />, label: entry.action, color: 'var(--text-muted)' };
+        const config = actionConfig[entry.action] || { label: entry.action, color: 'var(--text-muted)' };
+        const IconComponent = actionIcons[entry.action] || ((p: { size: number }) => <Circle {...p} />);
         return (
           <div key={entry.id} style={{
             display: 'flex',
@@ -414,7 +423,7 @@ function ActivityTab({ auditLog }: { auditLog: AuditEntry[] }) {
               fontWeight: 700,
               marginTop: 2,
             }}>
-              {config.icon}
+              <IconComponent size={11} />
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, fontSize: 13 }}>
