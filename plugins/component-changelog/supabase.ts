@@ -6,6 +6,19 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// --- Slack Notification (fire-and-forget) ---
+
+function notifySlack(params: {
+  type: 'component' | 'library';
+  componentName: string;
+  version: string;
+  bumpType: string;
+  message: string;
+  userName: string;
+}) {
+  supabase.functions.invoke('slack-notify', { body: params }).catch(() => {});
+}
+
 // --- Projects ---
 
 export async function getOrCreateProject(name: string, figmaFileKey: string): Promise<Project> {
@@ -174,6 +187,14 @@ export async function publishVersion(
 
   if (error) throw new Error(`Failed to publish: ${error.message}`);
   await logAudit(versionId, 'published', userId, `Published as ${newVersion}`, photoUrl);
+  notifySlack({
+    type: 'component',
+    componentName: version.component_name,
+    version: newVersion,
+    bumpType: bumpType,
+    message,
+    userName: userId,
+  });
   return data as ComponentVersion;
 }
 
@@ -551,6 +572,15 @@ export async function publishLibraryVersion(
 
     if (junctionError) throw new Error(`Failed to link components: ${junctionError.message}`);
   }
+
+  notifySlack({
+    type: 'library',
+    componentName: 'Library',
+    version: newVersion,
+    bumpType: bumpType,
+    message: message || '',
+    userName: userId,
+  });
 
   return libVersion as LibraryVersion;
 }

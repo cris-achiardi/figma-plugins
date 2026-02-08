@@ -556,8 +556,11 @@ function AuthScreen({ onAuthenticated }: {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: '100%', gap: 24, padding: 40,
     }}>
-      <span style={{ ...s.heading, fontSize: 16, color: 'var(--accent)' }}>{'>'}</span>
-      <span style={{ ...s.heading, fontSize: 14, color: 'var(--text-primary)' }}>component_changelog</span>
+      <svg width="42" height="48" viewBox="0 0 142 164" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M141.446 54.498L92.4854 162.998H38.2197L87.1807 54.498H141.446Z" fill="white" fillOpacity="0.7" stroke="#FBFBFB" strokeWidth="0.5"/>
+        <path d="M103.521 0.25L54.6055 108.178H0.387695L49.3047 0.25H103.521Z" fill="white" fillOpacity="0.7" stroke="#FBFBFB" strokeWidth="0.5"/>
+      </svg>
+      <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Enabler</span>
       <span style={{ ...s.body, fontSize: 11, color: 'var(--text-tertiary)', textAlign: 'center', lineHeight: 1.6 }}>
         connect your Figma account to track<br />
         component versions across libraries

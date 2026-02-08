@@ -6,6 +6,7 @@ const htmlTemplate = `<!DOCTYPE html>
   <meta charset="utf-8">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+    @import url('https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css');
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
