@@ -1,20 +1,32 @@
 ---
-// How it works section — teammate will polish
 const steps = [
-  { number: '01', title: 'Connect Library', description: 'Link your Figma design system library to the plugin.' },
-  { number: '02', title: 'Track Changes', description: 'Extract component snapshots and automatically detect diffs.' },
-  { number: '03', title: 'Publish Versions', description: 'Review, approve, and publish with semantic versioning.' },
+  {
+    number: '01',
+    title: 'Connect your library',
+    description: 'Install the Figma plugin and connect it to your component library. The plugin automatically discovers all components.',
+  },
+  {
+    number: '02',
+    title: 'Track changes',
+    description: 'Every time a component is modified, the plugin detects the diff. Added properties, removed variants, resized layers, to create a version entry.',
+  },
+  {
+    number: '03',
+    title: 'Publish versions',
+    description: 'Review diffs, approve changes, and publish with semantic version bumps. Your entire team gets a clear, traceable changelog.',
+  },
 ];
 ---
 
 <section class="how-it-works">
-  <h2>How It Works</h2>
   <div class="steps">
     {steps.map((s) => (
       <div class="step">
         <span class="step-number">{s.number}</span>
-        <h3>{s.title}</h3>
-        <p>{s.description}</p>
+        <div class="step-content">
+          <h3>{s.title}</h3>
+          <p>{s.description}</p>
+        </div>
       </div>
     ))}
   </div>
@@ -22,47 +34,50 @@ const steps = [
 
 <style>
   .how-it-works {
-    padding: 4rem 2rem;
+    padding: 6rem 2rem;
     max-width: 960px;
     margin: 0 auto;
-    border-top: 1px solid var(--border);
-  }
-
-  h2 {
-    font-family: var(--font-heading);
-    font-size: 1.75rem;
-    text-align: center;
-    margin-bottom: 3rem;
   }
 
   .steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
   }
 
   .step {
-    text-align: center;
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
   }
 
   .step-number {
-    font-family: var(--font-heading);
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--accent);
-    display: block;
-    margin-bottom: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    padding-top: 2px;
   }
 
-  .step h3 {
-    font-family: var(--font-heading);
-    font-size: 1rem;
+  .step-content h3 {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
     margin-bottom: 0.5rem;
   }
 
-  .step p {
-    font-size: 0.875rem;
+  .step-content p {
+    font-size: 14px;
     color: var(--text-secondary);
-    line-height: 1.5;
+    line-height: 1.6;
+    max-width: 560px;
+  }
+
+  @media (max-width: 600px) {
+    .how-it-works {
+      padding: 4rem 1.5rem;
+    }
   }
 </style>
