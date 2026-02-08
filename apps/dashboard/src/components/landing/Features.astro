@@ -1,20 +1,26 @@
 ---
+import { GitBranch, FileDiff, CheckCircle, Activity } from 'lucide-astro';
+
 const features = [
   {
     title: 'Version Tracking',
     description: 'Every component change is captured with semantic versioning, diffs, and snapshots.',
+    Icon: GitBranch,
   },
   {
     title: 'Diff Engine',
     description: 'See exactly what changed between versions — properties, variables, and structure.',
+    Icon: FileDiff,
   },
   {
     title: 'Approval Pipeline',
     description: 'Draft, review, approve, publish. A workflow that keeps your team aligned.',
+    Icon: CheckCircle,
   },
   {
     title: 'Health Dashboard',
     description: 'Monitor coverage, drift, and activity across your entire design system.',
+    Icon: Activity,
   },
 ];
 ---
@@ -30,6 +36,7 @@ const features = [
   <div class="feature-grid">
     {features.map((f) => (
       <div class="feature-card">
+        <span class="feature-icon"><f.Icon size={20} strokeWidth={1.5} /></span>
         <h3>{f.title}</h3>
         <p>{f.description}</p>
       </div>
@@ -96,6 +103,12 @@ const features = [
       0 0 30px rgba(251, 113, 133, 0.04),
       0 0 60px rgba(129, 140, 248, 0.04),
       0 0 80px rgba(52, 211, 153, 0.03);
+  }
+
+  .feature-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
   }
 
   .feature-card h3 {
