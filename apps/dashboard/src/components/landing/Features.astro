@@ -24,6 +24,9 @@ const features = [
     <h2>Everything you need to<br />version your design system.</h2>
     <p class="subtitle">Explore the live dashboard and see how Component Changelog tracks your design system health in real-time.</p>
   </div>
+  <div class="dashboard-preview">
+    <img src="/assets/img/dashboard-mockup.png" alt="Dashboard preview" class="dashboard-mockup" />
+  </div>
   <div class="feature-grid">
     {features.map((f) => (
       <div class="feature-card">
@@ -59,6 +62,17 @@ const features = [
     color: var(--text-secondary);
     font-size: 1rem;
     line-height: 1.6;
+  }
+
+  .dashboard-preview {
+    margin-bottom: 2.5rem;
+  }
+
+  .dashboard-mockup {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid #ffffff27;
   }
 
   .feature-grid {

@@ -19,16 +19,24 @@ const steps = [
 ---
 
 <section class="how-it-works">
-  <div class="steps">
-    {steps.map((s) => (
-      <div class="step">
-        <span class="step-number">{s.number}</span>
-        <div class="step-content">
-          <h3>{s.title}</h3>
-          <p>{s.description}</p>
-        </div>
+  <div class="two-col">
+    <div class="col-image">
+      <img src="/assets/img/plugin-mocks.png" alt="Component Changelog plugin interface" class="mockup" />
+    </div>
+    <div class="col-steps">
+      <h2 class="section-label">How it works</h2>
+      <div class="steps">
+        {steps.map((s) => (
+          <div class="step">
+            <span class="step-number">{s.number}</span>
+            <div class="step-content">
+              <h3>{s.title}</h3>
+              <p>{s.description}</p>
+            </div>
+          </div>
+        ))}
       </div>
-    ))}
+    </div>
   </div>
 </section>
 
@@ -39,21 +47,54 @@ const steps = [
     margin: 0 auto;
   }
 
+  .two-col {
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+  }
+
+  .col-image {
+    flex: 4;
+    min-width: 0;
+  }
+
+  .mockup {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+  }
+
+  .col-steps {
+    flex: 3;
+    min-width: 0;
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2rem;
+  }
+
   .steps {
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    gap: 2.5rem;
   }
 
   .step {
     display: flex;
     align-items: flex-start;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
 
   .step-number {
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-muted);
     flex-shrink: 0;
@@ -72,10 +113,14 @@ const steps = [
     font-size: 14px;
     color: var(--text-secondary);
     line-height: 1.6;
-    max-width: 560px;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
+    .two-col {
+      flex-direction: column;
+      gap: 2.5rem;
+    }
+
     .how-it-works {
       padding: 4rem 1.5rem;
     }
