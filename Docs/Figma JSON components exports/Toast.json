@@ -1,0 +1,1594 @@
+{
+  "document": {
+    "id": "2867:20615",
+    "name": "Toast",
+    "type": "COMPONENT_SET",
+    "scrollBehavior": "SCROLLS",
+    "componentPropertyDefinitions": {
+      "Variant": {
+        "type": "VARIANT",
+        "defaultValue": "Default",
+        "variantOptions": [
+          "Default",
+          "success",
+          "warning",
+          "danger"
+        ]
+      }
+    },
+    "boundVariables": {
+      "fills": [
+        {
+          "type": "VARIABLE_ALIAS",
+          "id": "VariableID:3086:210"
+        }
+      ]
+    },
+    "children": [
+      {
+        "id": "2867:20616",
+        "name": "Variant=Default",
+        "type": "COMPONENT",
+        "scrollBehavior": "SCROLLS",
+        "boundVariables": {
+          "itemSpacing": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:2724:337"
+          },
+          "paddingLeft": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingTop": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingRight": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingBottom": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "size": {
+            "x": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:d949730c722aff5f99a1cb294f7ef1015b76ac96/3665:7103"
+            }
+          },
+          "rectangleCornerRadii": {
+            "RECTANGLE_TOP_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_TOP_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            }
+          },
+          "fills": [
+            {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:3086:217"
+            }
+          ]
+        },
+        "children": [
+          {
+            "id": "2867:20617",
+            "name": "Toast notification",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:197"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:294"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:279"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.03921568766236305,
+                  "g": 0.03921568766236305,
+                  "b": 0.03921568766236305,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:197"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 40,
+              "width": 156,
+              "height": 24
+            },
+            "absoluteRenderBounds": {
+              "x": 50.16404724121094,
+              "y": 46.07600021362305,
+              "width": 135.25889587402344,
+              "height": 13.104000091552734
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Toast notification",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 18,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 24,
+              "lineHeightPercent": 105.82010650634766,
+              "lineHeightPercentFontSize": 133.3333282470703,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:846"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          },
+          {
+            "id": "2867:20618",
+            "name": "Nyan nyan goes the cat.",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:197"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:291"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:276"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.03921568766236305,
+                  "g": 0.03921568766236305,
+                  "b": 0.03921568766236305,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:197"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 68,
+              "width": 156,
+              "height": 19
+            },
+            "absoluteRenderBounds": {
+              "x": 50.55122756958008,
+              "y": 72.7959976196289,
+              "width": 134.89674377441406,
+              "height": 11.908004760742188
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Nyan nyan goes the cat.",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 19,
+              "lineHeightPercent": 115.9951171875,
+              "lineHeightPercentFontSize": 146.15383911132812,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:859"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          }
+        ],
+        "blendMode": "PASS_THROUGH",
+        "clipsContent": false,
+        "background": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:217"
+              }
+            }
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:217"
+              }
+            }
+          }
+        ],
+        "strokes": [],
+        "cornerRadius": 5,
+        "cornerSmoothing": 0,
+        "strokeWeight": 1,
+        "strokeAlign": "INSIDE",
+        "backgroundColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "layoutMode": "VERTICAL",
+        "counterAxisSizingMode": "FIXED",
+        "counterAxisAlignItems": "CENTER",
+        "paddingLeft": 24,
+        "paddingRight": 24,
+        "paddingTop": 24,
+        "paddingBottom": 24,
+        "itemSpacing": 4,
+        "layoutWrap": "NO_WRAP",
+        "absoluteBoundingBox": {
+          "x": 16,
+          "y": 16,
+          "width": 204,
+          "height": 95
+        },
+        "absoluteRenderBounds": {
+          "x": 16,
+          "y": 16,
+          "width": 204,
+          "height": 95
+        },
+        "constraints": {
+          "vertical": "TOP",
+          "horizontal": "LEFT"
+        },
+        "layoutSizingHorizontal": "FIXED",
+        "layoutSizingVertical": "HUG",
+        "effects": [],
+        "interactions": [],
+        "complexStrokeProperties": {
+          "strokeType": "BASIC"
+        }
+      },
+      {
+        "id": "2867:20619",
+        "name": "Variant=success",
+        "type": "COMPONENT",
+        "scrollBehavior": "SCROLLS",
+        "boundVariables": {
+          "itemSpacing": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:2724:337"
+          },
+          "paddingLeft": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingTop": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingRight": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingBottom": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "size": {
+            "x": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:d949730c722aff5f99a1cb294f7ef1015b76ac96/3665:7103"
+            }
+          },
+          "rectangleCornerRadii": {
+            "RECTANGLE_TOP_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_TOP_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            }
+          },
+          "fills": [
+            {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:3086:220"
+            }
+          ]
+        },
+        "children": [
+          {
+            "id": "2867:20620",
+            "name": "Toast notification",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:205"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:294"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:279"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.1882352977991104,
+                  "g": 0.6431372761726379,
+                  "b": 0.42352941632270813,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:205"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 139,
+              "width": 156,
+              "height": 24
+            },
+            "absoluteRenderBounds": {
+              "x": 50.16404724121094,
+              "y": 145.0760040283203,
+              "width": 135.25889587402344,
+              "height": 13.103988647460938
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Toast notification",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 18,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 24,
+              "lineHeightPercent": 105.82010650634766,
+              "lineHeightPercentFontSize": 133.3333282470703,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:846"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          },
+          {
+            "id": "2867:20621",
+            "name": "Nyan nyan goes the cat.",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:205"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:291"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:276"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.1882352977991104,
+                  "g": 0.6431372761726379,
+                  "b": 0.42352941632270813,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:205"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 167,
+              "width": 156,
+              "height": 19
+            },
+            "absoluteRenderBounds": {
+              "x": 50.55122756958008,
+              "y": 171.79600524902344,
+              "width": 134.89674377441406,
+              "height": 11.907989501953125
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Nyan nyan goes the cat.",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 19,
+              "lineHeightPercent": 115.9951171875,
+              "lineHeightPercentFontSize": 146.15383911132812,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:859"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          }
+        ],
+        "blendMode": "PASS_THROUGH",
+        "clipsContent": false,
+        "background": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 0.8666666746139526,
+              "g": 0.9529411792755127,
+              "b": 0.8941176533699036,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:220"
+              }
+            }
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 0.8666666746139526,
+              "g": 0.9529411792755127,
+              "b": 0.8941176533699036,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:220"
+              }
+            }
+          }
+        ],
+        "strokes": [],
+        "cornerRadius": 5,
+        "cornerSmoothing": 0,
+        "strokeWeight": 1,
+        "strokeAlign": "INSIDE",
+        "backgroundColor": {
+          "r": 0.8666666746139526,
+          "g": 0.9529411792755127,
+          "b": 0.8941176533699036,
+          "a": 1
+        },
+        "layoutMode": "VERTICAL",
+        "counterAxisSizingMode": "FIXED",
+        "counterAxisAlignItems": "CENTER",
+        "paddingLeft": 24,
+        "paddingRight": 24,
+        "paddingTop": 24,
+        "paddingBottom": 24,
+        "itemSpacing": 4,
+        "layoutWrap": "NO_WRAP",
+        "absoluteBoundingBox": {
+          "x": 16,
+          "y": 115,
+          "width": 204,
+          "height": 95
+        },
+        "absoluteRenderBounds": {
+          "x": 16,
+          "y": 115,
+          "width": 204,
+          "height": 95
+        },
+        "constraints": {
+          "vertical": "TOP",
+          "horizontal": "LEFT"
+        },
+        "layoutSizingHorizontal": "FIXED",
+        "layoutSizingVertical": "HUG",
+        "effects": [],
+        "interactions": [],
+        "complexStrokeProperties": {
+          "strokeType": "BASIC"
+        }
+      },
+      {
+        "id": "2867:20622",
+        "name": "Variant=warning",
+        "type": "COMPONENT",
+        "scrollBehavior": "SCROLLS",
+        "boundVariables": {
+          "itemSpacing": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:2724:337"
+          },
+          "paddingLeft": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingTop": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingRight": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingBottom": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "size": {
+            "x": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:d949730c722aff5f99a1cb294f7ef1015b76ac96/3665:7103"
+            }
+          },
+          "rectangleCornerRadii": {
+            "RECTANGLE_TOP_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_TOP_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            }
+          },
+          "fills": [
+            {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:3086:221"
+            }
+          ]
+        },
+        "children": [
+          {
+            "id": "2867:20623",
+            "name": "Toast notification",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:206"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:294"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:279"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.8784313797950745,
+                  "g": 0.7333333492279053,
+                  "b": 0.007843137718737125,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:206"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 238,
+              "width": 156,
+              "height": 24
+            },
+            "absoluteRenderBounds": {
+              "x": 50.16404724121094,
+              "y": 244.0760040283203,
+              "width": 135.25889587402344,
+              "height": 13.103988647460938
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Toast notification",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 18,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 24,
+              "lineHeightPercent": 105.82010650634766,
+              "lineHeightPercentFontSize": 133.3333282470703,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:846"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          },
+          {
+            "id": "2867:20624",
+            "name": "Nyan nyan goes the cat.",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:206"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:291"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:276"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.8784313797950745,
+                  "g": 0.7333333492279053,
+                  "b": 0.007843137718737125,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:206"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 266,
+              "width": 156,
+              "height": 19
+            },
+            "absoluteRenderBounds": {
+              "x": 50.55122756958008,
+              "y": 270.7959899902344,
+              "width": 134.89674377441406,
+              "height": 11.90802001953125
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Nyan nyan goes the cat.",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 19,
+              "lineHeightPercent": 115.9951171875,
+              "lineHeightPercentFontSize": 146.15383911132812,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:859"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          }
+        ],
+        "blendMode": "PASS_THROUGH",
+        "clipsContent": false,
+        "background": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 0.9843137264251709,
+              "b": 0.8196078538894653,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:221"
+              }
+            }
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 0.9843137264251709,
+              "b": 0.8196078538894653,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:221"
+              }
+            }
+          }
+        ],
+        "strokes": [],
+        "cornerRadius": 5,
+        "cornerSmoothing": 0,
+        "strokeWeight": 1,
+        "strokeAlign": "INSIDE",
+        "backgroundColor": {
+          "r": 1,
+          "g": 0.9843137264251709,
+          "b": 0.8196078538894653,
+          "a": 1
+        },
+        "layoutMode": "VERTICAL",
+        "counterAxisSizingMode": "FIXED",
+        "counterAxisAlignItems": "CENTER",
+        "paddingLeft": 24,
+        "paddingRight": 24,
+        "paddingTop": 24,
+        "paddingBottom": 24,
+        "itemSpacing": 4,
+        "layoutWrap": "NO_WRAP",
+        "absoluteBoundingBox": {
+          "x": 16,
+          "y": 214,
+          "width": 204,
+          "height": 95
+        },
+        "absoluteRenderBounds": {
+          "x": 16,
+          "y": 214,
+          "width": 204,
+          "height": 95
+        },
+        "constraints": {
+          "vertical": "TOP",
+          "horizontal": "LEFT"
+        },
+        "layoutSizingHorizontal": "FIXED",
+        "layoutSizingVertical": "HUG",
+        "effects": [],
+        "interactions": [],
+        "complexStrokeProperties": {
+          "strokeType": "BASIC"
+        }
+      },
+      {
+        "id": "2867:20625",
+        "name": "Variant=danger",
+        "type": "COMPONENT",
+        "scrollBehavior": "SCROLLS",
+        "boundVariables": {
+          "itemSpacing": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:2724:337"
+          },
+          "paddingLeft": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingTop": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingRight": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "paddingBottom": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:abe1b72d4cf4d3deac2c306c6ac6d47240cb36c8/3665:7548"
+          },
+          "size": {
+            "x": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:d949730c722aff5f99a1cb294f7ef1015b76ac96/3665:7103"
+            }
+          },
+          "rectangleCornerRadii": {
+            "RECTANGLE_TOP_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_TOP_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_LEFT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            },
+            "RECTANGLE_BOTTOM_RIGHT_CORNER_RADIUS": {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:2007:13005"
+            }
+          },
+          "fills": [
+            {
+              "type": "VARIABLE_ALIAS",
+              "id": "VariableID:3086:222"
+            }
+          ]
+        },
+        "children": [
+          {
+            "id": "2867:20626",
+            "name": "Toast notification",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:207"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:294"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:279"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.8980392217636108,
+                  "g": 0.2823529541492462,
+                  "b": 0.3019607961177826,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:207"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 337,
+              "width": 156,
+              "height": 24
+            },
+            "absoluteRenderBounds": {
+              "x": 50.16404724121094,
+              "y": 343.07598876953125,
+              "width": 135.25889587402344,
+              "height": 13.10400390625
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Toast notification",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 18,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 24,
+              "lineHeightPercent": 105.82010650634766,
+              "lineHeightPercentFontSize": 133.3333282470703,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:846"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          },
+          {
+            "id": "2867:20627",
+            "name": "Nyan nyan goes the cat.",
+            "type": "TEXT",
+            "scrollBehavior": "SCROLLS",
+            "boundVariables": {
+              "fills": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:207"
+                }
+              ],
+              "lineHeight": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:291"
+                }
+              ],
+              "fontFamily": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:264"
+                }
+              ],
+              "fontSize": [
+                {
+                  "type": "VARIABLE_ALIAS",
+                  "id": "VariableID:3086:276"
+                }
+              ]
+            },
+            "blendMode": "PASS_THROUGH",
+            "fills": [
+              {
+                "blendMode": "NORMAL",
+                "type": "SOLID",
+                "color": {
+                  "r": 0.8980392217636108,
+                  "g": 0.2823529541492462,
+                  "b": 0.3019607961177826,
+                  "a": 1
+                },
+                "boundVariables": {
+                  "color": {
+                    "type": "VARIABLE_ALIAS",
+                    "id": "VariableID:3086:207"
+                  }
+                }
+              }
+            ],
+            "strokes": [],
+            "strokeWeight": 1,
+            "strokeAlign": "OUTSIDE",
+            "absoluteBoundingBox": {
+              "x": 40,
+              "y": 365,
+              "width": 156,
+              "height": 19
+            },
+            "absoluteRenderBounds": {
+              "x": 50.55122756958008,
+              "y": 369.7959899902344,
+              "width": 134.89674377441406,
+              "height": 11.90802001953125
+            },
+            "constraints": {
+              "vertical": "TOP",
+              "horizontal": "LEFT"
+            },
+            "layoutAlign": "STRETCH",
+            "layoutGrow": 0,
+            "layoutSizingHorizontal": "FILL",
+            "layoutSizingVertical": "HUG",
+            "characters": "Nyan nyan goes the cat.",
+            "characterStyleOverrides": [],
+            "styleOverrideTable": {},
+            "lineTypes": [
+              "NONE"
+            ],
+            "lineIndentations": [
+              0
+            ],
+            "style": {
+              "fontFamily": "Outfit",
+              "fontPostScriptName": "Outfit-Light",
+              "fontStyle": "Light",
+              "fontWeight": 300,
+              "textAutoResize": "HEIGHT",
+              "fontSize": 13,
+              "textAlignHorizontal": "CENTER",
+              "textAlignVertical": "CENTER",
+              "letterSpacing": 0,
+              "lineHeightPx": 19,
+              "lineHeightPercent": 115.9951171875,
+              "lineHeightPercentFontSize": 146.15383911132812,
+              "lineHeightUnit": "PIXELS"
+            },
+            "layoutVersion": 5,
+            "styles": {
+              "text": "3093:859"
+            },
+            "effects": [],
+            "interactions": [],
+            "complexStrokeProperties": {
+              "strokeType": "BASIC"
+            }
+          }
+        ],
+        "blendMode": "PASS_THROUGH",
+        "clipsContent": false,
+        "background": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 0.8980392217636108,
+              "b": 0.8980392217636108,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:222"
+              }
+            }
+          }
+        ],
+        "fills": [
+          {
+            "blendMode": "NORMAL",
+            "type": "SOLID",
+            "color": {
+              "r": 1,
+              "g": 0.8980392217636108,
+              "b": 0.8980392217636108,
+              "a": 1
+            },
+            "boundVariables": {
+              "color": {
+                "type": "VARIABLE_ALIAS",
+                "id": "VariableID:3086:222"
+              }
+            }
+          }
+        ],
+        "strokes": [],
+        "cornerRadius": 5,
+        "cornerSmoothing": 0,
+        "strokeWeight": 1,
+        "strokeAlign": "INSIDE",
+        "backgroundColor": {
+          "r": 1,
+          "g": 0.8980392217636108,
+          "b": 0.8980392217636108,
+          "a": 1
+        },
+        "layoutMode": "VERTICAL",
+        "counterAxisSizingMode": "FIXED",
+        "counterAxisAlignItems": "CENTER",
+        "paddingLeft": 24,
+        "paddingRight": 24,
+        "paddingTop": 24,
+        "paddingBottom": 24,
+        "itemSpacing": 4,
+        "layoutWrap": "NO_WRAP",
+        "absoluteBoundingBox": {
+          "x": 16,
+          "y": 313,
+          "width": 204,
+          "height": 95
+        },
+        "absoluteRenderBounds": {
+          "x": 16,
+          "y": 313,
+          "width": 204,
+          "height": 95
+        },
+        "constraints": {
+          "vertical": "TOP",
+          "horizontal": "LEFT"
+        },
+        "layoutSizingHorizontal": "FIXED",
+        "layoutSizingVertical": "HUG",
+        "effects": [],
+        "interactions": [],
+        "complexStrokeProperties": {
+          "strokeType": "BASIC"
+        }
+      }
+    ],
+    "blendMode": "PASS_THROUGH",
+    "clipsContent": true,
+    "background": [
+      {
+        "blendMode": "NORMAL",
+        "type": "SOLID",
+        "color": {
+          "r": 0.9607843160629272,
+          "g": 0.95686274766922,
+          "b": 0.9490196108818054,
+          "a": 1
+        },
+        "boundVariables": {
+          "color": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:3086:210"
+          }
+        }
+      }
+    ],
+    "fills": [
+      {
+        "blendMode": "NORMAL",
+        "type": "SOLID",
+        "color": {
+          "r": 0.9607843160629272,
+          "g": 0.95686274766922,
+          "b": 0.9490196108818054,
+          "a": 1
+        },
+        "boundVariables": {
+          "color": {
+            "type": "VARIABLE_ALIAS",
+            "id": "VariableID:3086:210"
+          }
+        }
+      }
+    ],
+    "strokes": [
+      {
+        "blendMode": "NORMAL",
+        "type": "SOLID",
+        "color": {
+          "r": 0.5411764979362488,
+          "g": 0.21960784494876862,
+          "b": 0.9607843160629272,
+          "a": 1
+        }
+      }
+    ],
+    "cornerRadius": 5,
+    "cornerSmoothing": 0,
+    "strokeWeight": 1,
+    "strokeAlign": "INSIDE",
+    "backgroundColor": {
+      "r": 0.9607843160629272,
+      "g": 0.95686274766922,
+      "b": 0.9490196108818054,
+      "a": 1
+    },
+    "strokeDashes": [
+      10,
+      5
+    ],
+    "absoluteBoundingBox": {
+      "x": 0,
+      "y": 0,
+      "width": 236,
+      "height": 420
+    },
+    "absoluteRenderBounds": {
+      "x": 0,
+      "y": 0,
+      "width": 236,
+      "height": 420
+    },
+    "constraints": {
+      "vertical": "TOP",
+      "horizontal": "LEFT"
+    },
+    "effects": [],
+    "interactions": [],
+    "complexStrokeProperties": {
+      "strokeType": "BASIC"
+    }
+  },
+  "components": {
+    "2867:20616": {
+      "key": "2be42b87498d87d190ded7d3e4595e44d3573122",
+      "name": "Variant=Default",
+      "description": "",
+      "remote": false,
+      "componentSetId": "2867:20615",
+      "documentationLinks": []
+    },
+    "2867:20619": {
+      "key": "5ba8890bc3fb088908f497345e74f381a69dd878",
+      "name": "Variant=success",
+      "description": "",
+      "remote": false,
+      "componentSetId": "2867:20615",
+      "documentationLinks": []
+    },
+    "2867:20622": {
+      "key": "8615e2cd61d5a08fdfa1d16ce2bcd355cafcfaf0",
+      "name": "Variant=warning",
+      "description": "",
+      "remote": false,
+      "componentSetId": "2867:20615",
+      "documentationLinks": []
+    },
+    "2867:20625": {
+      "key": "f6948bedab5e0c7c80e028c5142ba5c261533cf9",
+      "name": "Variant=danger",
+      "description": "",
+      "remote": false,
+      "componentSetId": "2867:20615",
+      "documentationLinks": []
+    }
+  },
+  "componentSets": {
+    "2867:20615": {
+      "key": "5992a3849b985d48178c4762462ea1e12b82e229",
+      "name": "Toast",
+      "description": "",
+      "documentationLinks": []
+    }
+  },
+  "schemaVersion": 0,
+  "styles": {
+    "3093:846": {
+      "key": "58734d38283e3e8b7f79091fd52eedc04367b78a",
+      "name": "Body/Xl/Light",
+      "styleType": "TEXT",
+      "remote": false,
+      "description": ""
+    },
+    "3093:859": {
+      "key": "dc9394a73f7b03739d23f2f9f9891cbd60cdbce9",
+      "name": "Body/Sm/Light",
+      "styleType": "TEXT",
+      "remote": false,
+      "description": ""
+    }
+  }
+}

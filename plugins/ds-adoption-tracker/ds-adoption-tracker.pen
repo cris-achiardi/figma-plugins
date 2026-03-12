@@ -1,5 +1,5 @@
 {
-  "version": "2.6",
+  "version": "2.7",
   "children": [
     {
       "type": "frame",
@@ -589,6 +589,12 @@
                   "width": "fill_container",
                   "name": "analyzeBtn",
                   "fill": "$--blue",
+                  "height": "fit_content",
+                  "flipX": false,
+                  "flipY": false,
+                  "x": 16,
+                  "y": 78,
+                  "textGrowth": "auto",
                   "descendants": {
                     "KsVRc": {
                       "content": "Analyze",
