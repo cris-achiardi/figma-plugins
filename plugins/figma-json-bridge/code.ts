@@ -3,6 +3,24 @@ import { reconstructFromSnapshot } from './reconstruct';
 
 figma.showUI(__html__, { width: 420, height: 520 });
 
+// ── Structured property type + variable cache ────────────
+
+type PropEntry = { prop: string; value: string };
+
+const varCache = new Map<string, string | null>();
+
+async function resolveVarName(id: string): Promise<string | null> {
+  if (varCache.has(id)) return varCache.get(id)!;
+  const v = await figma.variables.getVariableByIdAsync(id);
+  const name = v ? v.name.replace(/\//g, '-') : null;
+  varCache.set(id, name);
+  return name;
+}
+
+function withVar(varName: string | null, rawValue: string): string {
+  return varName ? `var(--${varName}, ${rawValue})` : rawValue;
+}
+
 // ── Color helpers ────────────────────────────────────────
 
 function rgbToHex(r: number, g: number, b: number): string {
@@ -31,72 +49,118 @@ function formatPadding(t: number, r: number, b: number, l: number): string {
 
 // ── Property extractors ─────────────────────────────────
 
-function getSizeProps(node: SceneNode): string[] {
-  const props: string[] = [];
+async function getSizeProps(node: SceneNode): Promise<PropEntry[]> {
+  const props: PropEntry[] = [];
   const n = node as any;
+  const bv = (node as any).boundVariables || {};
 
-  if (n.layoutSizingHorizontal === 'HUG') props.push('width: hug');
-  else if (n.layoutSizingHorizontal === 'FILL') props.push('width: fill');
-  else props.push(`width: ${Math.round(node.width)}px`);
+  if (n.layoutSizingHorizontal === 'HUG') {
+    props.push({ prop: 'width', value: 'hug' });
+  } else if (n.layoutSizingHorizontal === 'FILL') {
+    props.push({ prop: 'width', value: 'fill' });
+  } else {
+    const raw = `${Math.round(node.width)}px`;
+    const varName = bv.width ? await resolveVarName(bv.width.id) : null;
+    props.push({ prop: 'width', value: withVar(varName, raw) });
+  }
 
-  if (n.layoutSizingVertical === 'HUG') props.push('height: hug');
-  else if (n.layoutSizingVertical === 'FILL') props.push('height: fill');
-  else props.push(`height: ${Math.round(node.height)}px`);
+  if (n.layoutSizingVertical === 'HUG') {
+    props.push({ prop: 'height', value: 'hug' });
+  } else if (n.layoutSizingVertical === 'FILL') {
+    props.push({ prop: 'height', value: 'fill' });
+  } else {
+    const raw = `${Math.round(node.height)}px`;
+    const varName = bv.height ? await resolveVarName(bv.height.id) : null;
+    props.push({ prop: 'height', value: withVar(varName, raw) });
+  }
 
   return props;
 }
 
-function getLayoutProps(node: SceneNode): string[] {
-  const props: string[] = [];
+async function getLayoutProps(node: SceneNode): Promise<PropEntry[]> {
+  const props: PropEntry[] = [];
   if (!('layoutMode' in node)) return props;
   const f = node as FrameNode;
   if (f.layoutMode === 'NONE') return props;
+  const bv = (f as any).boundVariables || {};
 
   if (f.layoutMode === 'HORIZONTAL') {
-    props.push('display: flex');
+    props.push({ prop: 'display', value: 'flex' });
   } else {
-    props.push('display: flex');
-    props.push('flex-direction: column');
+    props.push({ prop: 'display', value: 'flex' });
+    props.push({ prop: 'flex-direction', value: 'column' });
   }
 
-  if (f.layoutWrap === 'WRAP') props.push('flex-wrap: wrap');
+  if (f.layoutWrap === 'WRAP') props.push({ prop: 'flex-wrap', value: 'wrap' });
 
   const justify: Record<string, string> = {
     MIN: 'flex-start', CENTER: 'center', MAX: 'flex-end', SPACE_BETWEEN: 'space-between',
   };
   if (justify[f.primaryAxisAlignItems]) {
-    props.push(`justify-content: ${justify[f.primaryAxisAlignItems]}`);
+    props.push({ prop: 'justify-content', value: justify[f.primaryAxisAlignItems] });
   }
 
   const align: Record<string, string> = {
     MIN: 'flex-start', CENTER: 'center', MAX: 'flex-end', BASELINE: 'baseline',
   };
   if (align[f.counterAxisAlignItems]) {
-    props.push(`align-items: ${align[f.counterAxisAlignItems]}`);
+    props.push({ prop: 'align-items', value: align[f.counterAxisAlignItems] });
   }
 
-  if (f.itemSpacing > 0) props.push(`gap: ${f.itemSpacing}px`);
+  if (f.itemSpacing > 0) {
+    const raw = `${f.itemSpacing}px`;
+    const varName = bv.itemSpacing ? await resolveVarName(bv.itemSpacing.id) : null;
+    props.push({ prop: 'gap', value: withVar(varName, raw) });
+  }
 
   const pt = f.paddingTop || 0, pr = f.paddingRight || 0;
   const pb = f.paddingBottom || 0, pl = f.paddingLeft || 0;
   if (pt > 0 || pr > 0 || pb > 0 || pl > 0) {
-    props.push(`padding: ${formatPadding(pt, pr, pb, pl)}`);
+    // Resolve individual padding variables
+    const ptVar = bv.paddingTop ? await resolveVarName(bv.paddingTop.id) : null;
+    const prVar = bv.paddingRight ? await resolveVarName(bv.paddingRight.id) : null;
+    const pbVar = bv.paddingBottom ? await resolveVarName(bv.paddingBottom.id) : null;
+    const plVar = bv.paddingLeft ? await resolveVarName(bv.paddingLeft.id) : null;
+
+    // If all padding vars are the same single token, use shorthand
+    if (ptVar && ptVar === prVar && prVar === pbVar && pbVar === plVar) {
+      props.push({ prop: 'padding', value: withVar(ptVar, formatPadding(pt, pr, pb, pl)) });
+    } else if (ptVar || prVar || pbVar || plVar) {
+      // Output individual padding props when variables differ
+      if (pt > 0 || ptVar) props.push({ prop: 'padding-top', value: withVar(ptVar, `${pt}px`) });
+      if (pr > 0 || prVar) props.push({ prop: 'padding-right', value: withVar(prVar, `${pr}px`) });
+      if (pb > 0 || pbVar) props.push({ prop: 'padding-bottom', value: withVar(pbVar, `${pb}px`) });
+      if (pl > 0 || plVar) props.push({ prop: 'padding-left', value: withVar(plVar, `${pl}px`) });
+    } else {
+      props.push({ prop: 'padding', value: formatPadding(pt, pr, pb, pl) });
+    }
   }
 
   return props;
 }
 
-function getAppearanceProps(node: SceneNode): string[] {
-  const props: string[] = [];
+async function getAppearanceProps(node: SceneNode): Promise<PropEntry[]> {
+  const props: PropEntry[] = [];
+  const bv = (node as any).boundVariables || {};
 
   // Corner radius
   if ('cornerRadius' in node) {
     const r = (node as any).cornerRadius;
     if (r === figma.mixed) {
       const n = node as FrameNode;
-      props.push(`border-radius: ${n.topLeftRadius}px ${n.topRightRadius}px ${n.bottomRightRadius}px ${n.bottomLeftRadius}px`);
+      // Try to resolve individual corner variables
+      const tlVar = bv.topLeftRadius ? await resolveVarName(bv.topLeftRadius.id) : null;
+      const trVar = bv.topRightRadius ? await resolveVarName(bv.topRightRadius.id) : null;
+      const brVar = bv.bottomRightRadius ? await resolveVarName(bv.bottomRightRadius.id) : null;
+      const blVar = bv.bottomLeftRadius ? await resolveVarName(bv.bottomLeftRadius.id) : null;
+      const tl = withVar(tlVar, `${n.topLeftRadius}px`);
+      const tr = withVar(trVar, `${n.topRightRadius}px`);
+      const br = withVar(brVar, `${n.bottomRightRadius}px`);
+      const bl = withVar(blVar, `${n.bottomLeftRadius}px`);
+      props.push({ prop: 'border-radius', value: `${tl} ${tr} ${br} ${bl}` });
     } else if (typeof r === 'number' && r > 0) {
-      props.push(`border-radius: ${r}px`);
+      const varName = bv.topLeftRadius ? await resolveVarName(bv.topLeftRadius.id) : null;
+      props.push({ prop: 'border-radius', value: withVar(varName, `${r}px`) });
     }
   }
 
@@ -104,12 +168,25 @@ function getAppearanceProps(node: SceneNode): string[] {
   if ('strokes' in node) {
     const strokes = (node as GeometryMixin).strokes;
     if (Array.isArray(strokes)) {
-      for (const s of strokes) {
+      for (let i = 0; i < strokes.length; i++) {
+        const s = strokes[i];
         if (s.visible === false) continue;
         if (s.type === 'SOLID') {
           const hex = rgbToHex(s.color.r, s.color.g, s.color.b);
           const w = (node as GeometryMixin).strokeWeight;
-          props.push(`border: ${typeof w === 'number' ? w : 1}px solid ${hex}`);
+          const weight = typeof w === 'number' ? w : 1;
+
+          // Resolve stroke color variable
+          const strokeVarId = bv.strokes?.[i]?.id;
+          const strokeVarName = strokeVarId ? await resolveVarName(strokeVarId) : null;
+          const colorStr = withVar(strokeVarName, hex);
+
+          // Resolve stroke weight variable
+          const swVarId = bv.strokeWeight?.id;
+          const swVarName = swVarId ? await resolveVarName(swVarId) : null;
+          const weightStr = swVarName ? withVar(swVarName, `${weight}px`) : `${weight}px`;
+
+          props.push({ prop: 'border', value: `${weightStr} solid ${colorStr}` });
           break;
         }
       }
@@ -120,16 +197,24 @@ function getAppearanceProps(node: SceneNode): string[] {
   if ('fills' in node && node.type !== 'TEXT') {
     const fills = (node as GeometryMixin).fills;
     if (Array.isArray(fills)) {
-      for (const f of fills) {
+      for (let i = 0; i < fills.length; i++) {
+        const f = fills[i];
         const str = paintToStr(f);
-        if (str) { props.push(`background: ${str}`); break; }
+        if (str) {
+          const fillVarId = bv.fills?.[i]?.id;
+          const fillVarName = fillVarId ? await resolveVarName(fillVarId) : null;
+          props.push({ prop: 'background', value: withVar(fillVarName, str) });
+          break;
+        }
       }
     }
   }
 
   // Opacity
   if ('opacity' in node && (node as any).opacity < 1) {
-    props.push(`opacity: ${Math.round((node as any).opacity * 100)}%`);
+    const raw = `${Math.round((node as any).opacity * 100)}%`;
+    const varName = bv.opacity ? await resolveVarName(bv.opacity.id) : null;
+    props.push({ prop: 'opacity', value: withVar(varName, raw) });
   }
 
   // Effects
@@ -138,14 +223,14 @@ function getAppearanceProps(node: SceneNode): string[] {
       if (!fx.visible) continue;
       if (fx.type === 'DROP_SHADOW') {
         const hex = rgbToHex(fx.color.r, fx.color.g, fx.color.b);
-        props.push(`box-shadow: ${fx.offset.x}px ${fx.offset.y}px ${fx.radius}px ${hex}`);
+        props.push({ prop: 'box-shadow', value: `${fx.offset.x}px ${fx.offset.y}px ${fx.radius}px ${hex}` });
       } else if (fx.type === 'INNER_SHADOW') {
         const hex = rgbToHex(fx.color.r, fx.color.g, fx.color.b);
-        props.push(`box-shadow: inset ${fx.offset.x}px ${fx.offset.y}px ${fx.radius}px ${hex}`);
+        props.push({ prop: 'box-shadow', value: `inset ${fx.offset.x}px ${fx.offset.y}px ${fx.radius}px ${hex}` });
       } else if (fx.type === 'LAYER_BLUR') {
-        props.push(`filter: blur(${fx.radius}px)`);
+        props.push({ prop: 'filter', value: `blur(${fx.radius}px)` });
       } else if (fx.type === 'BACKGROUND_BLUR') {
-        props.push(`backdrop-filter: blur(${fx.radius}px)`);
+        props.push({ prop: 'backdrop-filter', value: `blur(${fx.radius}px)` });
       }
     }
   }
@@ -153,11 +238,12 @@ function getAppearanceProps(node: SceneNode): string[] {
   return props;
 }
 
-function getTextProps(node: TextNode): string[] {
-  const props: string[] = [];
+async function getTextProps(node: TextNode): Promise<PropEntry[]> {
+  const props: PropEntry[] = [];
+  const bv = (node as any).boundVariables || {};
 
   if (node.fontName !== figma.mixed) {
-    props.push(`font-family: ${node.fontName.family}`);
+    props.push({ prop: 'font-family', value: node.fontName.family });
     const style = node.fontName.style.toLowerCase();
     let weight = '400';
     if (style.includes('black')) weight = '900';
@@ -167,35 +253,47 @@ function getTextProps(node: TextNode): string[] {
     else if (style.includes('medium')) weight = '500';
     else if (style.includes('light')) weight = '300';
     else if (style.includes('thin')) weight = '100';
-    props.push(`font-weight: ${weight}`);
-    if (style.includes('italic')) props.push('font-style: italic');
+    props.push({ prop: 'font-weight', value: weight });
+    if (style.includes('italic')) props.push({ prop: 'font-style', value: 'italic' });
   }
 
   if (node.fontSize !== figma.mixed) {
-    props.push(`font-size: ${node.fontSize}px`);
+    const raw = `${node.fontSize}px`;
+    const varName = bv.fontSize ? await resolveVarName(bv.fontSize.id) : null;
+    props.push({ prop: 'font-size', value: withVar(varName, raw) });
   }
 
   if (node.lineHeight !== figma.mixed && node.lineHeight.unit !== 'AUTO') {
     const lh = node.lineHeight;
-    props.push(`line-height: ${lh.unit === 'PIXELS' ? `${lh.value}px` : `${lh.value}%`}`);
+    const raw = lh.unit === 'PIXELS' ? `${lh.value}px` : `${lh.value}%`;
+    const varName = bv.lineHeight ? await resolveVarName(bv.lineHeight.id) : null;
+    props.push({ prop: 'line-height', value: withVar(varName, raw) });
   }
 
   if (node.letterSpacing !== figma.mixed) {
     const ls = node.letterSpacing;
     if (ls.value !== 0) {
-      props.push(`letter-spacing: ${ls.unit === 'PIXELS' ? `${ls.value}px` : `${(ls.value / 100).toFixed(2)}em`}`);
+      const raw = ls.unit === 'PIXELS' ? `${ls.value}px` : `${(ls.value / 100).toFixed(2)}em`;
+      const varName = bv.letterSpacing ? await resolveVarName(bv.letterSpacing.id) : null;
+      props.push({ prop: 'letter-spacing', value: withVar(varName, raw) });
     }
   }
 
   if (node.textAlignHorizontal && node.textAlignHorizontal !== 'LEFT') {
-    props.push(`text-align: ${node.textAlignHorizontal.toLowerCase()}`);
+    props.push({ prop: 'text-align', value: node.textAlignHorizontal.toLowerCase() });
   }
 
   // Text color from fills
   if (Array.isArray(node.fills)) {
-    for (const f of node.fills as Paint[]) {
-      const str = paintToStr(f);
-      if (str) { props.push(`color: ${str}`); break; }
+    const fills = node.fills as Paint[];
+    for (let i = 0; i < fills.length; i++) {
+      const str = paintToStr(fills[i]);
+      if (str) {
+        const fillVarId = bv.fills?.[i]?.id;
+        const fillVarName = fillVarId ? await resolveVarName(fillVarId) : null;
+        props.push({ prop: 'color', value: withVar(fillVarName, str) });
+        break;
+      }
     }
   }
 
@@ -236,29 +334,95 @@ function getComponentProps(node: ComponentSetNode | ComponentNode): string[] {
   return lines;
 }
 
+// ── Structured node property collection ──────────────────
+
+async function collectNodeProps(
+  node: SceneNode,
+  path: string = ''
+): Promise<Map<string, PropEntry[]>> {
+  const result = new Map<string, PropEntry[]>();
+  const nodePath = path ? `${path}/${node.name}` : node.name;
+
+  const props: PropEntry[] = [
+    ...await getSizeProps(node),
+    ...await getLayoutProps(node),
+    ...await getAppearanceProps(node),
+    ...(node.type === 'TEXT' ? await getTextProps(node as TextNode) : []),
+  ];
+
+  result.set(nodePath, props);
+
+  if ('children' in node) {
+    for (const child of (node as ChildrenMixin).children) {
+      const childMap = await collectNodeProps(child as SceneNode, nodePath);
+      for (const [k, v] of childMap) result.set(k, v);
+    }
+  }
+
+  return result;
+}
+
+// ── Variant diffing ──────────────────────────────────────
+
+function parseVariantName(name: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const pair of name.split(',')) {
+    const [key, val] = pair.split('=').map(s => s.trim());
+    if (key && val) result[key] = val;
+  }
+  return result;
+}
+
+function diffProps(
+  base: Map<string, PropEntry[]>,
+  variant: Map<string, PropEntry[]>
+): Map<string, PropEntry[]> {
+  const changes = new Map<string, PropEntry[]>();
+
+  for (const [path, vProps] of variant) {
+    const bProps = base.get(path);
+    if (!bProps) {
+      changes.set(path, [{ prop: '[added]', value: '' }]);
+      continue;
+    }
+    const bMap = new Map(bProps.map(p => [p.prop, p.value]));
+    const diff = vProps.filter(p => bMap.get(p.prop) !== p.value);
+    if (diff.length > 0) changes.set(path, diff);
+  }
+
+  // Detect removed nodes
+  for (const path of base.keys()) {
+    if (!variant.has(path)) {
+      changes.set(path, [{ prop: '[removed]', value: '' }]);
+    }
+  }
+
+  return changes;
+}
+
 // ── Tree walk → plain text ───────────────────────────────
 
-function nodeToText(node: SceneNode, depth: number): string {
+async function nodeToText(node: SceneNode, depth: number): Promise<string> {
   const indent = '  '.repeat(depth);
   const lines: string[] = [];
 
   lines.push(`${indent}${node.name}`);
 
-  const allProps: string[] = [
-    ...getSizeProps(node),
-    ...getLayoutProps(node),
-    ...getAppearanceProps(node),
-    ...(node.type === 'TEXT' ? getTextProps(node as TextNode) : []),
+  const allProps: PropEntry[] = [
+    ...await getSizeProps(node),
+    ...await getLayoutProps(node),
+    ...await getAppearanceProps(node),
+    ...(node.type === 'TEXT' ? await getTextProps(node as TextNode) : []),
   ];
 
   for (const p of allProps) {
-    lines.push(`${indent}  ${p}`);
+    lines.push(`${indent}  ${p.prop}: ${p.value}`);
   }
 
   if ('children' in node) {
     for (const child of (node as ChildrenMixin).children) {
       lines.push('');
-      lines.push(nodeToText(child as SceneNode, depth + 1));
+      lines.push(await nodeToText(child as SceneNode, depth + 1));
     }
   }
 
@@ -302,6 +466,29 @@ figma.on('selectionchange', pushSelection);
 
 // ── Export handler ───────────────────────────────────────
 
+// ── Format helpers for variant diff output ───────────────
+
+function formatDiffSection(
+  changes: Map<string, PropEntry[]>,
+  rootName: string
+): string[] {
+  const lines: string[] = [];
+  for (const [path, entries] of changes) {
+    // Show only the leaf node name relative to root for brevity
+    const shortPath = path.startsWith(rootName + '/')
+      ? path.slice(rootName.length + 1)
+      : path;
+
+    const parts = entries.map(e =>
+      e.prop === '[added]' ? '[added]'
+      : e.prop === '[removed]' ? '[removed]'
+      : `${e.prop} → ${e.value}`
+    );
+    lines.push(`  ${shortPath}: ${parts.join(', ')}`);
+  }
+  return lines;
+}
+
 async function handleExport() {
   const sel = figma.currentPage.selection;
   if (sel.length !== 1) {
@@ -311,13 +498,21 @@ async function handleExport() {
 
   const node = sel[0];
   try {
-    figma.ui.postMessage({ type: 'export-progress', message: 'Extracting properties...', percent: 30 } as CodeMessage);
+    // Clear variable cache for fresh resolution each export
+    varCache.clear();
+
+    figma.ui.postMessage({ type: 'export-progress', message: 'Extracting properties...', percent: 10 } as CodeMessage);
 
     const out: string[] = [];
 
     // Header
     out.push(node.name);
-    out.push(`${node.type.replace(/_/g, ' ')} | ${Math.round(node.width)} x ${Math.round(node.height)}`);
+    const typeLabel = node.type.replace(/_/g, ' ');
+    if (node.type === 'COMPONENT_SET') {
+      out.push(typeLabel);
+    } else {
+      out.push(`${typeLabel} | ${Math.round(node.width)} x ${Math.round(node.height)}`);
+    }
 
     // Component properties
     if (node.type === 'COMPONENT_SET' || node.type === 'COMPONENT') {
@@ -337,20 +532,93 @@ async function handleExport() {
     out.push('---');
     out.push('');
 
-    figma.ui.postMessage({ type: 'export-progress', message: 'Building layer tree...', percent: 60 } as CodeMessage);
-
-    // For component sets, walk the first variant
-    let target: SceneNode = node;
+    // ── Component Set: variant diffing pipeline ──────────
     if (node.type === 'COMPONENT_SET') {
-      const variants = (node as ComponentSetNode).children;
-      if (variants.length > 0) {
-        target = variants[0] as SceneNode;
-        out.push(`Variant: ${target.name}`);
+      const csNode = node as ComponentSetNode;
+      const allVariants = csNode.children.filter(c => c.type === 'COMPONENT') as ComponentNode[];
+      if (allVariants.length === 0) {
+        out.push('(no variants found)');
+      } else {
+        // Pick the first variant as base
+        const baseVariant = allVariants[0];
+        const baseParsed = parseVariantName(baseVariant.name);
+
+        figma.ui.postMessage({ type: 'export-progress', message: 'Resolving base variant...', percent: 20 } as CodeMessage);
+
+        // Base variant label
+        out.push(`Base: ${baseVariant.name}`);
         out.push('');
+
+        // Full base tree with tokens
+        out.push(await nodeToText(baseVariant, 0));
+
+        figma.ui.postMessage({ type: 'export-progress', message: 'Collecting base properties...', percent: 30 } as CodeMessage);
+
+        // Collect structured base props for diffing
+        const baseProps = await collectNodeProps(baseVariant);
+
+        // ── Dimension isolation ──────────────────────
+        // Get variant property definitions (only VARIANT type)
+        const defs = csNode.componentPropertyDefinitions;
+        const dimensions: { name: string; values: string[] }[] = [];
+        for (const [name, def] of Object.entries(defs)) {
+          if (def.type === 'VARIANT' && def.variantOptions) {
+            dimensions.push({ name, values: def.variantOptions });
+          }
+        }
+
+        // For each dimension, find variants that differ from base in ONLY that dimension
+        const diffSections: string[] = [];
+        const totalDimValues = dimensions.reduce((sum, d) => sum + d.values.length - 1, 0);
+        let processedValues = 0;
+
+        for (const dim of dimensions) {
+          const baseVal = baseParsed[dim.name];
+          const otherValues = dim.values.filter(v => v !== baseVal);
+
+          for (const targetVal of otherValues) {
+            // Build the target variant key: same as base but with this one dimension changed
+            const targetParsed = { ...baseParsed, [dim.name]: targetVal };
+
+            // Find matching variant
+            const targetVariant = allVariants.find(v => {
+              const parsed = parseVariantName(v.name);
+              return Object.entries(targetParsed).every(([k, val]) => parsed[k] === val);
+            });
+
+            processedValues++;
+            const percent = 40 + Math.round((processedValues / Math.max(totalDimValues, 1)) * 50);
+            figma.ui.postMessage({ type: 'export-progress', message: `Diffing ${dim.name}=${targetVal}...`, percent } as CodeMessage);
+
+            if (!targetVariant) continue;
+
+            const variantProps = await collectNodeProps(targetVariant);
+            const changes = diffProps(baseProps, variantProps);
+
+            if (changes.size > 0) {
+              diffSections.push(`${dim.name}=${targetVal}:`);
+              diffSections.push(...formatDiffSection(changes, baseVariant.name));
+            }
+          }
+        }
+
+        if (diffSections.length > 0) {
+          out.push('');
+          out.push('---');
+          out.push('');
+          out.push('Variant changes:');
+          out.push('');
+          out.push(...diffSections);
+        }
       }
+
+    // ── Non-component-set: plain tree walk ───────────────
+    } else {
+      figma.ui.postMessage({ type: 'export-progress', message: 'Building layer tree...', percent: 60 } as CodeMessage);
+      out.push(await nodeToText(node, 0));
     }
 
-    out.push(nodeToText(target, 0));
+    figma.ui.postMessage({ type: 'export-progress', message: 'Done', percent: 100 } as CodeMessage);
 
     const text = out.join('\n');
     figma.ui.postMessage({ type: 'export-complete', text } as CodeMessage);
