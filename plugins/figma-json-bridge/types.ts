@@ -12,7 +12,7 @@ export interface SelectionInfo {
 // ── Messages: UI → Code ─────────────────────────────────
 
 export type UIMessage =
-  | { type: 'export'; includeSvg: boolean }
+  | { type: 'export' }
   | { type: 'import'; snapshot: any; componentName: string }
   | { type: 'resize'; height: number };
 
@@ -21,7 +21,7 @@ export type UIMessage =
 export type CodeMessage =
   | { type: 'selection-changed'; info: SelectionInfo | null }
   | { type: 'export-progress'; message: string; percent: number }
-  | { type: 'export-complete'; json: string }
+  | { type: 'export-complete'; text: string }
   | { type: 'import-progress'; message: string; percent: number }
   | { type: 'import-complete'; nodeId: string; warnings: string[] }
   | { type: 'error'; message: string };

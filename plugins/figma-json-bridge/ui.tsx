@@ -20,8 +20,8 @@ function copyToClipboard(text: string): boolean {
   return ok;
 }
 
-function downloadFile(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'application/json' });
+function downloadFile(content: string, filename: string, mime = 'text/plain') {
+  const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -124,15 +124,14 @@ function ExportTab({ selection, error, onClearError }: {
   error: string | null;
   onClearError: () => void;
 }) {
-  const [includeSvg, setIncludeSvg] = useState(true);
   const [progress, setProgress] = useState<{ message: string; percent: number } | null>(null);
-  const [exportedJson, setExportedJson] = useState<string | null>(null);
+  const [exportedText, setExportedText] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   // Reset when selection changes
   useEffect(() => {
-    setExportedJson(null);
+    setExportedText(null);
     setProgress(null);
     setCopied(false);
     setShowPreview(false);
@@ -146,7 +145,7 @@ function ExportTab({ selection, error, onClearError }: {
       if (msg.type === 'export-progress') {
         setProgress({ message: msg.message, percent: msg.percent });
       } else if (msg.type === 'export-complete') {
-        setExportedJson(msg.json);
+        setExportedText(msg.text);
         setProgress(null);
       }
     };
@@ -156,24 +155,24 @@ function ExportTab({ selection, error, onClearError }: {
 
   const handleExport = () => {
     onClearError();
-    setExportedJson(null);
+    setExportedText(null);
     setCopied(false);
     setShowPreview(false);
-    postMessage({ type: 'export', includeSvg });
+    postMessage({ type: 'export' });
   };
 
   const handleCopy = () => {
-    if (exportedJson) {
-      copyToClipboard(exportedJson);
+    if (exportedText) {
+      copyToClipboard(exportedText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
   const handleSave = () => {
-    if (exportedJson && selection) {
+    if (exportedText && selection) {
       const safeName = selection.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-      downloadFile(exportedJson, `${safeName}.json`);
+      downloadFile(exportedText, `${safeName}.txt`);
     }
   };
 
@@ -216,41 +215,25 @@ function ExportTab({ selection, error, onClearError }: {
         )}
       </div>
 
-      {/* Options */}
-      {!exportedJson && !progress && (
-        <>
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer',
-            marginBottom: 16,
-          }}>
-            <input
-              type="checkbox"
-              checked={includeSvg}
-              onChange={e => setIncludeSvg(e.target.checked)}
-              style={{ accentColor: 'var(--accent)' }}
-            />
-            Include SVG data for vectors
-          </label>
-
-          <button style={{ ...btnPrimary, width: '100%' }} onClick={handleExport}>
-            Export JSON
-          </button>
-        </>
+      {/* Export button */}
+      {!exportedText && !progress && (
+        <button style={{ ...btnPrimary, width: '100%' }} onClick={handleExport}>
+          Export Properties
+        </button>
       )}
 
       {/* Progress */}
       {progress && <ProgressBar message={progress.message} percent={progress.percent} />}
 
       {/* Export done */}
-      {exportedJson && (
+      {exportedText && (
         <div>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             marginBottom: 12, color: 'var(--accent)', fontSize: 11,
           }}>
             <span>&#10003;</span>
-            <span>Exported — {formatSize(exportedJson.length)}</span>
+            <span>Exported — {formatSize(exportedText.length)}</span>
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -280,8 +263,7 @@ function ExportTab({ selection, error, onClearError }: {
               overflow: 'auto', maxHeight: 200,
               whiteSpace: 'pre-wrap', wordBreak: 'break-all',
             }}>
-              {exportedJson.slice(0, 5000)}
-              {exportedJson.length > 5000 && '\n... (truncated)'}
+              {exportedText}
             </pre>
           )}
 
