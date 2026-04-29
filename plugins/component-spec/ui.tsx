@@ -496,7 +496,6 @@ function ImportTab({ error, onClearError }: {
 // ── App ─────────────────────────────────────────────────
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const [selection, setSelection] = useState<SelectionInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -516,52 +515,14 @@ function App() {
     return () => window.removeEventListener('message', handler);
   }, []);
 
-  const tabStyle = (active: boolean): React.CSSProperties => ({
-    flex: 1,
-    padding: '10px 0',
-    textAlign: 'center',
-    cursor: 'pointer',
-    fontFamily: 'var(--font-heading)',
-    fontWeight: active ? 700 : 400,
-    fontSize: 12,
-    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-    background: 'none',
-    border: 'none',
-    borderBottom: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
-    transition: 'all 0.15s',
-  });
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '1px solid var(--border)',
-        background: 'var(--bg-elevated)',
-        flexShrink: 0,
-      }}>
-        <button style={tabStyle(activeTab === 'export')} onClick={() => setActiveTab('export')}>
-          Export
-        </button>
-        <button style={tabStyle(activeTab === 'import')} onClick={() => setActiveTab('import')}>
-          Import
-        </button>
-      </div>
-
-      {/* Content */}
       <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
-        {activeTab === 'export' ? (
-          <ExportTab
-            selection={selection}
-            error={error}
-            onClearError={() => setError(null)}
-          />
-        ) : (
-          <ImportTab
-            error={error}
-            onClearError={() => setError(null)}
-          />
-        )}
+        <ExportTab
+          selection={selection}
+          error={error}
+          onClearError={() => setError(null)}
+        />
       </div>
     </div>
   );

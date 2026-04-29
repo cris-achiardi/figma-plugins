@@ -300,6 +300,59 @@ async function getTextProps(node: TextNode): Promise<PropEntry[]> {
   return props;
 }
 
+// ── Instance reference extraction ────────────────────────
+
+// Treat INSTANCE nodes as opaque references: emit the source component name
+// + the instance's componentProperties (variant selection, booleans, etc.)
+// so consumers can cross-link to the separately-extracted source instead of
+// re-reading inflated children.
+async function getInstanceProps(node: InstanceNode): Promise<PropEntry[]> {
+  const props: PropEntry[] = [];
+
+  let ref = 'unknown';
+  try {
+    const main = await node.getMainComponentAsync();
+    if (main) {
+      ref = main.parent?.type === 'COMPONENT_SET' ? main.parent.name : main.name;
+    }
+  } catch { /* ignore — fall back to 'unknown' */ }
+  props.push({ prop: 'instance', value: ref });
+
+  // Disambiguate name collisions when stripping Figma's #nodeId:offset suffix
+  // produces duplicate clean names (e.g., 4 INSTANCE_SWAP props all named "Cells").
+  const entries = Object.entries(node.componentProperties);
+  const cleaned = entries.map(([name]) => name.replace(/#\d+:\d+$/, ''));
+  const counts = new Map<string, number>();
+  for (const c of cleaned) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const seen = new Map<string, number>();
+
+  for (let i = 0; i < entries.length; i++) {
+    const def = entries[i][1];
+    // Skip props with no surfaced value (Figma sometimes returns undefined for
+    // unset INSTANCE_SWAP defaults; the slot list lives in the source component spec).
+    if (def.value === undefined || def.value === null) continue;
+
+    const clean = cleaned[i];
+    const total = counts.get(clean)!;
+    let label: string;
+    if (total > 1) {
+      const idx = (seen.get(clean) ?? 0) + 1;
+      seen.set(clean, idx);
+      label = `.${clean}#${idx}`;
+    } else {
+      label = `.${clean}`;
+    }
+
+    let value: string;
+    if (typeof def.value === 'boolean') value = String(def.value);
+    else if (typeof def.value === 'symbol') value = '(mixed)';
+    else value = String(def.value);
+    props.push({ prop: label, value });
+  }
+
+  return props;
+}
+
 // ── Component properties ─────────────────────────────────
 
 function getComponentProps(node: ComponentSetNode | ComponentNode): string[] {
@@ -336,29 +389,43 @@ function getComponentProps(node: ComponentSetNode | ComponentNode): string[] {
 
 // ── Structured node property collection ──────────────────
 
+// Paths are relative to the root node so sibling variants align for diffing.
+// Root collects to '' (rendered as '(root)'). Siblings sharing a name get
+// uniform #1..#N suffixes (only when there's more than one) so collapse can
+// pattern-match cleanly downstream.
 async function collectNodeProps(
-  node: SceneNode,
-  path: string = ''
+  root: SceneNode
 ): Promise<Map<string, PropEntry[]>> {
   const result = new Map<string, PropEntry[]>();
-  const nodePath = path ? `${path}/${node.name}` : node.name;
 
-  const props: PropEntry[] = [
-    ...await getSizeProps(node),
-    ...await getLayoutProps(node),
-    ...await getAppearanceProps(node),
-    ...(node.type === 'TEXT' ? await getTextProps(node as TextNode) : []),
-  ];
+  async function walk(node: SceneNode, path: string) {
+    const props: PropEntry[] = [
+      ...(node.type === 'INSTANCE' ? await getInstanceProps(node as InstanceNode) : []),
+      ...await getSizeProps(node),
+      ...await getLayoutProps(node),
+      ...await getAppearanceProps(node),
+      ...(node.type === 'TEXT' ? await getTextProps(node as TextNode) : []),
+    ];
+    result.set(path, props);
 
-  result.set(nodePath, props);
-
-  if ('children' in node) {
-    for (const child of (node as ChildrenMixin).children) {
-      const childMap = await collectNodeProps(child as SceneNode, nodePath);
-      for (const [k, v] of childMap) result.set(k, v);
+    // Instances are opaque — don't traverse their inflated children.
+    if (node.type !== 'INSTANCE' && 'children' in node) {
+      const children = (node as ChildrenMixin).children;
+      const counts = new Map<string, number>();
+      for (const c of children) counts.set(c.name, (counts.get(c.name) ?? 0) + 1);
+      const assigned = new Map<string, number>();
+      for (const child of children) {
+        const total = counts.get(child.name)!;
+        const idx = (assigned.get(child.name) ?? 0) + 1;
+        assigned.set(child.name, idx);
+        const segment = total > 1 ? `${child.name}#${idx}` : child.name;
+        const childPath = path ? `${path}/${segment}` : segment;
+        await walk(child as SceneNode, childPath);
+      }
     }
   }
 
+  await walk(root, '');
   return result;
 }
 
@@ -400,6 +467,64 @@ function diffProps(
   return changes;
 }
 
+function entriesEqual(a: PropEntry[], b: PropEntry[]): boolean {
+  if (a.length !== b.length) return false;
+  const aMap = new Map(a.map(p => [p.prop, p.value]));
+  for (const p of b) {
+    if (aMap.get(p.prop) !== p.value) return false;
+  }
+  return true;
+}
+
+// Collapse sibling instances that share identical deltas into a single entry
+// keyed at the pattern path (with #N suffixes replaced by [*]). When deltas
+// differ across siblings the original paths are preserved.
+function collapseSiblingDeltas(
+  changes: Map<string, PropEntry[]>
+): Map<string, PropEntry[]> {
+  const toPattern = (path: string) =>
+    path.split('/').map(s => s.replace(/#\d+$/, '[*]')).join('/');
+
+  const groups = new Map<string, { paths: string[]; entries: PropEntry[][] }>();
+  for (const [path, entries] of changes) {
+    const key = toPattern(path);
+    let g = groups.get(key);
+    if (!g) { g = { paths: [], entries: [] }; groups.set(key, g); }
+    g.paths.push(path);
+    g.entries.push(entries);
+  }
+
+  const result = new Map<string, PropEntry[]>();
+  const handled = new Set<string>();
+
+  for (const [origPath, origEntries] of changes) {
+    if (handled.has(origPath)) continue;
+    const key = toPattern(origPath);
+    const g = groups.get(key)!;
+
+    if (g.paths.length === 1) {
+      result.set(origPath, origEntries);
+      handled.add(origPath);
+      continue;
+    }
+
+    const allMatch = g.entries.every(e => entriesEqual(e, g.entries[0]));
+    if (allMatch) {
+      result.set(key, g.entries[0]);
+      for (const p of g.paths) handled.add(p);
+    } else {
+      for (let i = 0; i < g.paths.length; i++) {
+        if (!handled.has(g.paths[i])) {
+          result.set(g.paths[i], g.entries[i]);
+          handled.add(g.paths[i]);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 // ── Tree walk → plain text ───────────────────────────────
 
 async function nodeToText(node: SceneNode, depth: number): Promise<string> {
@@ -409,6 +534,7 @@ async function nodeToText(node: SceneNode, depth: number): Promise<string> {
   lines.push(`${indent}${node.name}`);
 
   const allProps: PropEntry[] = [
+    ...(node.type === 'INSTANCE' ? await getInstanceProps(node as InstanceNode) : []),
     ...await getSizeProps(node),
     ...await getLayoutProps(node),
     ...await getAppearanceProps(node),
@@ -419,7 +545,8 @@ async function nodeToText(node: SceneNode, depth: number): Promise<string> {
     lines.push(`${indent}  ${p.prop}: ${p.value}`);
   }
 
-  if ('children' in node) {
+  // Instances are opaque references — skip inflated children in the readable tree too.
+  if (node.type !== 'INSTANCE' && 'children' in node) {
     for (const child of (node as ChildrenMixin).children) {
       lines.push('');
       lines.push(await nodeToText(child as SceneNode, depth + 1));
@@ -468,23 +595,16 @@ figma.on('selectionchange', pushSelection);
 
 // ── Format helpers for variant diff output ───────────────
 
-function formatDiffSection(
-  changes: Map<string, PropEntry[]>,
-  rootName: string
-): string[] {
+function formatDiffSection(changes: Map<string, PropEntry[]>): string[] {
   const lines: string[] = [];
   for (const [path, entries] of changes) {
-    // Show only the leaf node name relative to root for brevity
-    const shortPath = path.startsWith(rootName + '/')
-      ? path.slice(rootName.length + 1)
-      : path;
-
+    const label = path || '(root)';
     const parts = entries.map(e =>
       e.prop === '[added]' ? '[added]'
       : e.prop === '[removed]' ? '[removed]'
       : `${e.prop} → ${e.value}`
     );
-    lines.push(`  ${shortPath}: ${parts.join(', ')}`);
+    lines.push(`  ${label}: ${parts.join(', ')}`);
   }
   return lines;
 }
@@ -593,11 +713,11 @@ async function handleExport() {
             if (!targetVariant) continue;
 
             const variantProps = await collectNodeProps(targetVariant);
-            const changes = diffProps(baseProps, variantProps);
+            const changes = collapseSiblingDeltas(diffProps(baseProps, variantProps));
 
             if (changes.size > 0) {
               diffSections.push(`${dim.name}=${targetVal}:`);
-              diffSections.push(...formatDiffSection(changes, baseVariant.name));
+              diffSections.push(...formatDiffSection(changes));
             }
           }
         }

@@ -1,7 +1,7 @@
 {
-  "name": "figma-json-bridge",
+  "name": "component-spec",
   "version": "1.0.0",
-  "description": "Export Figma components as JSON_REST_V1 and reconstruct from JSON",
+  "description": "Export a compact, AI-friendly spec of a Figma component — API, tokens, and variant deltas as plain text.",
   "main": "code.js",
   "scripts": {
     "build": "npx esbuild code.ts --bundle --outfile=code.js --target=es2017 && npx esbuild ui.tsx --bundle --outfile=ui.js --target=es2017 && node inline-ui.js"
